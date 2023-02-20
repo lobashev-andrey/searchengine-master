@@ -25,8 +25,7 @@
 //    protected Set compute() {
 //        String address = siteEntity.getUrl();
 //        List<PageEntity> children = siteEntity.getChildren();
-//        siteAndPagesDelete(siteEntity);  // Удаляем сайт и связанные страницы
-//        siteIndexingAdd(address);             // По новой добавляем сайт в `sites`
+//
 //        Set<String> seenPages = new HashSet<>(); // Сюда складываем просмотренные страницы (адреса)
 //
 //        List<RecursiveIndexer> pageConstructors = new ArrayList<>(); // Создаем список задач
@@ -78,4 +77,10 @@
 //        }                                                   ////////////////     МОЖНО ЗАКОММЕНТИРОВАТЬ   /////////////
 //        return hierarchy;
 //    }
+//
+//
+//
+//
+//
+//
 //}
