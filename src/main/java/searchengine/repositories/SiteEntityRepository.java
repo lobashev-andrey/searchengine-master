@@ -5,3 +5,4 @@ import searchengine.model.SiteEntity;
 
 public interface SiteEntityRepository extends CrudRepository<SiteEntity, Integer> {
 }
+

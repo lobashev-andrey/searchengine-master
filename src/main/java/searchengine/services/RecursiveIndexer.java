@@ -5,45 +5,46 @@
 //import org.jsoup.nodes.Document;
 //import org.jsoup.nodes.Element;
 //import org.jsoup.select.Elements;
+//import searchengine.controllers.PageEntityController;
 //import searchengine.model.PageEntity;
 //import searchengine.model.SiteEntity;
 //
 //import java.io.IOException;
-//        import java.util.ArrayList;
+//import java.util.ArrayList;
 //import java.util.HashSet;
 //import java.util.List;
-//        import java.util.Set;
-//        import java.util.concurrent.RecursiveTask;
+//import java.util.Set;
+//import java.util.concurrent.RecursiveTask;
 //
 //public class RecursiveIndexer extends RecursiveTask<Set<String>> {
 //    private final SiteEntity siteEntity;
-//    public RecursiveIndexer(SiteEntity siteEntity) {
+//    private final PageEntityController pageEntityController;
+//    public RecursiveIndexer(SiteEntity siteEntity, PageEntityController pageEntityController) {
 //        this.siteEntity = siteEntity;
+//        this.pageEntityController = pageEntityController;
 //    }
 //
 //    @Override
 //    protected Set compute() {
-//        String address = siteEntity.getUrl();
-//        List<PageEntity> children = siteEntity.getChildren();
-//
-//        Set<String> seenPages = new HashSet<>(); // Сюда складываем просмотренные страницы (адреса)
+//        String url = siteEntity.getUrl();        // Возможно, очистить от '/' в конце ?????????
 //
 //        List<RecursiveIndexer> pageConstructors = new ArrayList<>(); // Создаем список задач
+//
 //        try {
-//            Document doc = Jsoup.connect(address).get();
+//            Document doc = Jsoup.connect(url).get();
 //            Elements elements = doc.select("a");
 //            for(Element el : elements){
 //                String child = el.attr("abs:href");
-//                if(!child.startsWith(address) || child.equals(address)) {
+//                if(!child.startsWith(url) || child.equals(url)) {
 //                    continue;
 //                }
-//                for(String s : seenPages){
-//                    if(s.equals(child))
+//                // Надо понять, нет ли уже этого адреса в таблице
+//                if(pageEntityController.containsUrl(url)){
+//                    continue;
 //                }
 //
 //
-//
-//                int start = address.length();
+//                int start = url.length();
 //                int end = child.length();
 //                if(child.substring(start).contains("/")) {
 //                    end = child.indexOf("/", start);
