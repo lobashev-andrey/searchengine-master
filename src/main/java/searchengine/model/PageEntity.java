@@ -10,7 +10,7 @@ import javax.persistence.*;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "pages", indexes = @Index(name = "path_index", columnList = "path", unique = true))//unique Наверно лишний - у разных сайтов одинаковые страницы?
+@Table(name = "pages", indexes = @Index(name = "path_index", columnList = "path"))//unique Наверно лишний - у разных сайтов одинаковые страницы?
 public class PageEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

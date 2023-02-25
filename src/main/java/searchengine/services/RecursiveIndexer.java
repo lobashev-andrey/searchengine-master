@@ -6,8 +6,6 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import searchengine.controllers.PageEntityController;
-import searchengine.controllers.SiteEntityController;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -18,35 +16,41 @@ import java.util.concurrent.RecursiveTask;
 
 @RequiredArgsConstructor
 public class RecursiveIndexer extends RecursiveTask<List<String>> {
-    private final String baseUrl;
     private final String address;
-    private final Set<String> urlSet;
 
     @Override
     protected List compute() {
         List<RecursiveIndexer> pageConstructors = new ArrayList<>(); // Создаем список задач
         List<String> children = new ArrayList<>();
-//
-//        urlSet.add(address);
+        Set<String> childrenUrls = new HashSet<>();
+
+        System.out.println(address + " ////////////////////////////////////////////");
 
         try {
             Document doc = Jsoup.connect(address).get();
             Elements elements = doc.select("a");
             for(Element el : elements){
                 String child = el.attr("abs:href");
-                if(!child.startsWith(baseUrl)
-                        || child.contains("#")
-                        || urlSet.contains(child)) {                       // ??????????????????????
+                if(!child.startsWith(address) || child.equals(address) || child.contains("#")) {
                     continue;
                 }
-//                if(pageEntityController.containsUrl(child)){  // Надо понять, нет ли уже этого path в таблице
-//                    continue;
-//                }
-                children.add(child);
-                urlSet.add(child);
+
+                int start = address.length();
+                int end = child.length();
+                if(child.substring(start).contains("/")) {
+                    end = child.indexOf("/", start);
+                }
+
+                child = child.substring(0, Math.min(end + 1, child.length()));
+                childrenUrls.add(child);
+
+                System.out.println(child); ////////////////////////////
+
             }
+            children.addAll(childrenUrls);
+
             for(String child : children) {  // Добавили ближайших детей, теперь каждому даем ту же задачу
-                RecursiveIndexer rec = new RecursiveIndexer(baseUrl, child, urlSet);
+                RecursiveIndexer rec = new RecursiveIndexer(child);
                 rec.fork();
                 pageConstructors.add(rec);
             }
@@ -67,10 +71,4 @@ public class RecursiveIndexer extends RecursiveTask<List<String>> {
         }
         return children;
     }
-
-
-
-
-
-
 }

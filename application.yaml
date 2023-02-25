@@ -20,7 +20,17 @@ indexing-settings:
 #      name: Лента.ру
 #    - url: https://www.skillbox.ru
 #      name: Skillbox
-#    - url: https://www.playback.ru
-#      name: PlayBack.Ru
-    - url: https://apn-p.ru/events
+    - url: https://www.playback.ru
+      name: PlayBack.Ru
+    - url: https://skillbox.ru/media/code/java-stream-api-kopilka-retseptov/
+      name: SomeStr
+    - url: https://apn-p.ru
       name: APN-P.ru
+#    - url: https://www.dextra.ru
+#      name: Декстра
+
+
+  userAgent:
+    Mozilla/5.0 (Windows; U; WindowsNT 5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6
+  referer:
+    http://www.google.com

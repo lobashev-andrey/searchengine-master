@@ -1,10 +1,10 @@
 package searchengine.controllers;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import searchengine.model.SiteEntity;
+import searchengine.model.Status;
 import searchengine.repositories.SiteEntityRepository;
 
 import java.util.Date;
@@ -32,8 +32,21 @@ public class SiteEntityController {
         }
         return null;
     }
-    @PatchMapping("/sites")
+    @PutMapping("/sites")
     public void refreshSiteEntity(int site_id){
         siteEntityRepository.findById(site_id).get().setStatus_time(new Date());
     }
+    @PutMapping("/sites/{id}")
+    public void setStatus(@PathVariable int id, Status status ){
+        SiteEntity sE = siteEntityRepository.findById(id).get();
+        sE.setStatus(status);
+        siteEntityRepository.save(sE);
+    }
+    @PutMapping("/sites/{id}/{lastError}")
+    public void setError(@PathVariable int id, @PathVariable String lastError){
+        SiteEntity sE = siteEntityRepository.findById(id).get();
+        sE.setLast_error(lastError);
+        siteEntityRepository.save(sE);
+    }
+
 }
