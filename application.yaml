@@ -16,18 +16,18 @@ spring:
 
 indexing-settings:
   sites:
-    - url: https://lenta.ru
-      name: Лента.ру
-    - url: https://skillbox.ru
-      name: Skillbox
+#    - url: https://lenta.ru
+#      name: Лента.ру
+#    - url: https://skillbox.ru
+#      name: Skillbox
 #    - url: https://www.playback.ru
 #      name: PlayBack.Ru
-#    - url: https://skillbox.ru/media/code/java-stream-api-kopilka-retseptov/
+#    - url: https://skillbox.ru/media/code/
 #      name: SomeStr
-#    - url: https://apn-p.ru/events
-#      name: APN-P.ru
-#    - url: https://www.dextra.ru
-#      name: Декстра
+    - url: https://apn-p.ru/publication
+      name: APN-P.ru
+    - url: https://www.dextra.ru/services/
+      name: Декстра
 
 
   userAgent:

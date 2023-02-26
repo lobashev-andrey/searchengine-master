@@ -11,16 +11,15 @@ import searchengine.config.Site;
 import searchengine.config.SitesList;
 import searchengine.controllers.PageEntityController;
 import searchengine.controllers.SiteEntityController;
-import searchengine.dto.indexing.IndexingError;
 import searchengine.dto.indexing.IndexingResponse;
+import searchengine.dto.indexing.IndexingResponseFalse;
+import searchengine.dto.indexing.IndexingResponseTrue;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
 import searchengine.model.Status;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ForkJoinPool;
 
 @Service
@@ -29,34 +28,50 @@ public class IndexingServiceImpl implements IndexingService{
     private final SitesList sites;
     private final SiteEntityController siteEntityController;
     private final PageEntityController pageEntityController;
-    private  final ConnectionConfig userAgent;
-    private  final ConnectionConfig referer;
+    private final ConnectionConfig userAgent;
+    private final ConnectionConfig referer;
+    private volatile boolean stop = false;
 
 
     @Override
     public IndexingResponse getIndexing() {
         if(siteEntityController.isIndexing()){
             System.out.println("INDEXING already");
-            return new IndexingResponse("Индексация уже запущена");
+            return new IndexingResponseFalse("Индексация уже запущена");
         }
 
         List<Site> sitesForIndexing = sites.getSites();
+
         for(Site s : sitesForIndexing){
-            // удалять все имеющиеся данные по этому сайту (записи из таблиц site и page);
-            cleanTablesForSite(s);
-            // создавать в таблице site новую запись со статусом INDEXING;
-            SiteEntity newSite = createIndexingSiteEntity(s);
-            // обходить все страницы, начиная с главной, добавлять их адреса, статусы и содержимое в базу данных в таблицу page;
-            newSitePagesAdder(newSite);
-            // по завершении обхода изменять статус (поле status) на INDEXED;
-            statusChanger(newSite, Status.INDEXED);
-            // если произошла ошибка и обход завершить не удалось, изменять статус на FAILED и вносить в поле last_error понятную информацию о произошедшей ошибке.
-            String lastError = "jkjkjkjkj";
-            setLastError(newSite, lastError);
+
+            Thread a =
+            new Thread(() -> {
+                System.out.println("thread");
+
+                cleanTablesForSite(s);
+                SiteEntity newSite = createIndexingSiteEntity(s);
+                System.out.println("kjkjkjkj");
+
+                newSitePagesAdder(newSite);
+
+
+
+
+
+                statusChanger(newSite, Status.INDEXED);
+                // если произошла ошибка и обход завершить не удалось, изменять статус на FAILED и вносить в поле last_error понятную информацию о произошедшей ошибке.
+//                String lastError = "jkjkjkjkj";
+//                setLastError(newSite, lastError);
+
+
+            });
+            a.start();
+            System.out.println("stop");
+            if(stop) a.interrupt();
+            System.out.println("stop  stop   stop **************************************");
         }
 
-        System.out.println("5555555555555555555555555555555" );
-        return new IndexingResponse();
+        return new IndexingResponseTrue();
     }
 
 
@@ -82,8 +97,9 @@ public class IndexingServiceImpl implements IndexingService{
     // обходить все страницы, начиная с главной, добавлять их адреса, статусы и содержимое в базу данных в таблицу page;
     public void newSitePagesAdder(SiteEntity newSite) {
         List<String> result = new ArrayList<>();
-        result.add(newSite.getUrl());
-        result.addAll(new ForkJoinPool().invoke(new RecursiveIndexer(newSite.getUrl())));
+//        result.add(newSite.getUrl());
+        Set<String> total = new HashSet<>();
+        result.addAll(new ForkJoinPool().invoke(new RecursiveIndexer(newSite.getUrl(), newSite.getUrl(), total)));
 
         for (String r : result) {
             long time = Math.round(100 + 50 * Math.random());   //Math.round(500 + 4500 * Math.random());
@@ -159,4 +175,27 @@ public class IndexingServiceImpl implements IndexingService{
     public void setLastError(SiteEntity newSite, String lastError){
         siteEntityController.setError(newSite.getId(),lastError);
     }
+
+    @Override
+    public IndexingResponse stopIndexing() {
+        if(siteEntityController.isIndexing()){
+
+            System.out.println("Индексация уже идет //////////////////////////////////////////////////");
+
+            // Остановить надо все потоки
+            stop = true;
+            // , а потом:
+
+
+            for(int id : siteEntityController.listOfIndexing()) {
+                siteEntityController.setStatus(id, Status.FAILED);
+                siteEntityController.setError(id, "Индексация остановлена пользователем");
+            }
+            return new IndexingResponseTrue();
+        }
+        System.out.println("Индексации нет //////////////////////////////////////////////////////////////");
+        return new IndexingResponseFalse("Индексация не запущена");
+    }
 }
+
+

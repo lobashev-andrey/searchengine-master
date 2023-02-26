@@ -37,6 +37,11 @@ public class SiteEntityController {
         return siteEntityRepository.countIndexing() > 0;
     }
 
+    @GetMapping("/sites/whichAreIndexing")
+    public int[] listOfIndexing(){
+        return siteEntityRepository.listOfIndexing();
+    }
+
     @PutMapping("/sites")
     public void refreshSiteEntity(int site_id){
         siteEntityRepository.findById(site_id).get().setStatus_time(new Date());
@@ -53,5 +58,9 @@ public class SiteEntityController {
         sE.setLast_error(lastError);
         siteEntityRepository.save(sE);
     }
+
+
+
+
 
 }

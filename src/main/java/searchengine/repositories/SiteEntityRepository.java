@@ -12,6 +12,9 @@ public interface SiteEntityRepository extends CrudRepository<SiteEntity, Integer
     @Query(value = "SELECT COUNT(*) from sites where `status` = 'INDEXING'" , nativeQuery = true)
     int countIndexing();
 
+    @Query(value = "SELECT `id` from sites where `status` = 'INDEXING'", nativeQuery = true)
+    int[] listOfIndexing();
+
 
 
 }

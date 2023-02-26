@@ -1,6 +1,7 @@
 package searchengine.services;
 
 
+import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -14,52 +15,55 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.RecursiveTask;
 
-@RequiredArgsConstructor
+@AllArgsConstructor
 public class RecursiveIndexer extends RecursiveTask<List<String>> {
     private final String address;
-    private Set<String> totalUrls = new HashSet<>();
-    Set<String> total = new HashSet<>();
+    private final String baseUrl;
+    private final Set<String> total;
+//    private volatile boolean stop;
+
 
     @Override
     protected List compute() {
-
         List<RecursiveIndexer> pageConstructors = new ArrayList<>(); // Создаем список задач
         List<String> children = new ArrayList<>();
-        Set<String> childrenUrls = new HashSet<>();
 
-        System.out.println(address + " ////////////////////////////////////////////");
+//        if(stop) return children;
 
         try {
             Document doc = Jsoup.connect(address).get();
             Elements elements = doc.select("a");
             for(Element el : elements){
                 String child = el.attr("abs:href");
-                if(!child.startsWith(address) || child.equals(address) || child.contains("#")) {
+//                if(!child.startsWith(address) || child.equals(address) || child.contains("#")) {
+//                    continue;
+//                }
+                if(!child.startsWith(baseUrl) || child.contains("#")) {
                     continue;
                 }
-//
-//
-//                ######
-
-
-                int start = address.length();
-                int end = child.length();
-                if(child.substring(start).contains("/")) {
-                    end = child.indexOf("/", start);
+                int before = total.size();
+                total.add(child);
+                if(total.size() == before){
+                    continue;
                 }
+                children.add(child);
 
-                child = child.substring(0, Math.min(end + 1, child.length()));
-                childrenUrls.add(child);
+                System.out.println(child);
+//                int start = address.length();
+//                int end = child.length();
+//                if(child.substring(start).contains("/")) {
+//                    end = child.indexOf("/", start);
+//                }
+//
+//                child = child.substring(0, Math.min(end + 1, child.length()));
+//                childrenUrls.add(child);
 
             }
-            children.addAll(childrenUrls);
-
             for(String child : children) {  // Добавили ближайших детей, теперь каждому даем ту же задачу
-                RecursiveIndexer rec = new RecursiveIndexer(child);
+                RecursiveIndexer rec = new RecursiveIndexer(child, baseUrl, total);
                 rec.fork();
                 pageConstructors.add(rec);
             }
-
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -71,7 +75,6 @@ public class RecursiveIndexer extends RecursiveTask<List<String>> {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-
             children.addAll(task.join());    // Добавляем результаты каждого ребенка
         }
 
