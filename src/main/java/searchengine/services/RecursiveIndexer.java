@@ -17,9 +17,12 @@ import java.util.concurrent.RecursiveTask;
 @RequiredArgsConstructor
 public class RecursiveIndexer extends RecursiveTask<List<String>> {
     private final String address;
+    private Set<String> totalUrls = new HashSet<>();
+    Set<String> total = new HashSet<>();
 
     @Override
     protected List compute() {
+
         List<RecursiveIndexer> pageConstructors = new ArrayList<>(); // Создаем список задач
         List<String> children = new ArrayList<>();
         Set<String> childrenUrls = new HashSet<>();
@@ -34,6 +37,10 @@ public class RecursiveIndexer extends RecursiveTask<List<String>> {
                 if(!child.startsWith(address) || child.equals(address) || child.contains("#")) {
                     continue;
                 }
+//
+//
+//                ######
+
 
                 int start = address.length();
                 int end = child.length();
@@ -43,8 +50,6 @@ public class RecursiveIndexer extends RecursiveTask<List<String>> {
 
                 child = child.substring(0, Math.min(end + 1, child.length()));
                 childrenUrls.add(child);
-
-                System.out.println(child); ////////////////////////////
 
             }
             children.addAll(childrenUrls);
@@ -69,6 +74,7 @@ public class RecursiveIndexer extends RecursiveTask<List<String>> {
 
             children.addAll(task.join());    // Добавляем результаты каждого ребенка
         }
+
         return children;
     }
 }

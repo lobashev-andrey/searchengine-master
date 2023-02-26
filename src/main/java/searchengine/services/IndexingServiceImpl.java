@@ -11,6 +11,8 @@ import searchengine.config.Site;
 import searchengine.config.SitesList;
 import searchengine.controllers.PageEntityController;
 import searchengine.controllers.SiteEntityController;
+import searchengine.dto.indexing.IndexingError;
+import searchengine.dto.indexing.IndexingResponse;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
 import searchengine.model.Status;
@@ -19,7 +21,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.ForkJoinPool;
 
 @Service
@@ -33,7 +34,12 @@ public class IndexingServiceImpl implements IndexingService{
 
 
     @Override
-    public void getIndexing() {
+    public IndexingResponse getIndexing() {
+        if(siteEntityController.isIndexing()){
+            System.out.println("INDEXING already");
+            return new IndexingResponse("Индексация уже запущена");
+        }
+
         List<Site> sitesForIndexing = sites.getSites();
         for(Site s : sitesForIndexing){
             // удалять все имеющиеся данные по этому сайту (записи из таблиц site и page);
@@ -42,15 +48,19 @@ public class IndexingServiceImpl implements IndexingService{
             SiteEntity newSite = createIndexingSiteEntity(s);
             // обходить все страницы, начиная с главной, добавлять их адреса, статусы и содержимое в базу данных в таблицу page;
             newSitePagesAdder(newSite);
-
-
             // по завершении обхода изменять статус (поле status) на INDEXED;
             statusChanger(newSite, Status.INDEXED);
             // если произошла ошибка и обход завершить не удалось, изменять статус на FAILED и вносить в поле last_error понятную информацию о произошедшей ошибке.
             String lastError = "jkjkjkjkj";
             setLastError(newSite, lastError);
         }
+
+        System.out.println("5555555555555555555555555555555" );
+        return new IndexingResponse();
     }
+
+
+
     // удалять все имеющиеся данные по этому сайту (записи из таблиц site и page);
     public void cleanTablesForSite(Site s){
         SiteEntity oldSite = siteEntityController.getSiteEntity(s.getUrl());
@@ -94,25 +104,8 @@ public class IndexingServiceImpl implements IndexingService{
         System.out.println("path ------------------------");
         System.out.println(path);
 
-//        try {
-//            response = Jsoup.connect(path)
-//                    .userAgent(userAgent.getUserAgent())
-//                    .referrer(referer.getReferer())
-//                    .execute();
-//        } catch (IOException e) {
-//            System.out.print("PRINTSTACK ");e.printStackTrace();
-//        }
         Document doc = null;
         int status_code = 800;
-//        try {
-//            doc = Jsoup.connect(path)
-//                    .userAgent(userAgent.getUserAgent())
-//                    .referrer(referer.getReferer()).get();
-//        } catch (HttpStatusException ex) {
-//            status_code = ex.getStatusCode();
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
 
         try {
             response = Jsoup.connect(path)
@@ -139,19 +132,14 @@ public class IndexingServiceImpl implements IndexingService{
         } catch (IOException e) {
             System.out.println("IOException");
         }
-
         if(doc == null) return;
 
-//        String documentType = Objects.requireNonNull(doc.documentType()).toString();
-//        System.out.println(documentType);
         String contentType = response.contentType();
-
-
 
         System.out.println(contentType + " contentType");////////////////////////////////////
         String content = contentType;
         if(contentType != null && contentType.startsWith("text/html")){
-            content = doc.toString();
+            content = doc.html();
         }
         String rootPath = newSite.getUrl();
         path = path.substring(rootPath.length() - 1);

@@ -1,5 +1,8 @@
 package searchengine.dto.indexing;
 
+import lombok.Getter;
+
+@Getter
 public class IndexingError {
-    private final String errors = "Индексация уже запущена";
+    private final String error = "Индексация уже запущена";
 }

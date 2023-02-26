@@ -32,6 +32,11 @@ public class SiteEntityController {
         }
         return null;
     }
+    @GetMapping("/sites/isIndexing")
+    public boolean isIndexing(){
+        return siteEntityRepository.countIndexing() > 0;
+    }
+
     @PutMapping("/sites")
     public void refreshSiteEntity(int site_id){
         siteEntityRepository.findById(site_id).get().setStatus_time(new Date());

@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import searchengine.dto.indexing.IndexingResponse;
 import searchengine.dto.statistics.StatisticsResponse;
 import searchengine.model.SiteEntity;
 import searchengine.repositories.SiteEntityRepository;
@@ -33,11 +34,8 @@ public class ApiController {
     }
 
     @GetMapping("/startIndexing")
-    public ResponseEntity<StatisticsResponse> startIndexing(){
-        indexingService.getIndexing();
-        return ResponseEntity.ok(statisticsService.getStatistics());
-        // Пока просто запускаем, без return - удалим сайты и поставим заново
-        //return ResponseEntity(indexingService.getIndexing(), HttpStatus.OK); // Надо подумать, что возвращать
+    public ResponseEntity<IndexingResponse> startIndexing(){
+        return ResponseEntity.ok(indexingService.getIndexing());
     }
 
 }

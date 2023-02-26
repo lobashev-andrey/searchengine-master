@@ -5,7 +5,7 @@ spring:
   datasource:
     username: root
     password: andrey4976root_A
-    url: jdbc:mysql://localhost:3306/search_engine?useSSL=false&requireSSL=false&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://localhost:3306/search_engine?useSSL=false&requireSSL=false&allowPublicKeyRetrieval=true&useUnicode=yes&characterEncoding=UTF-8
   jpa:
     properties:
       hibernate:
@@ -16,16 +16,16 @@ spring:
 
 indexing-settings:
   sites:
-#    - url: https://www.lenta.ru
-#      name: Лента.ру
-#    - url: https://www.skillbox.ru
-#      name: Skillbox
-    - url: https://www.playback.ru
-      name: PlayBack.Ru
-    - url: https://skillbox.ru/media/code/java-stream-api-kopilka-retseptov/
-      name: SomeStr
-    - url: https://apn-p.ru
-      name: APN-P.ru
+    - url: https://lenta.ru
+      name: Лента.ру
+    - url: https://skillbox.ru
+      name: Skillbox
+#    - url: https://www.playback.ru
+#      name: PlayBack.Ru
+#    - url: https://skillbox.ru/media/code/java-stream-api-kopilka-retseptov/
+#      name: SomeStr
+#    - url: https://apn-p.ru/events
+#      name: APN-P.ru
 #    - url: https://www.dextra.ru
 #      name: Декстра
 
