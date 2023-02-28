@@ -20,7 +20,7 @@ public class RecursiveIndexer extends RecursiveTask<List<String>> {
     private final String address;
     private final String baseUrl;
     private final Set<String> total;
-//    private volatile boolean stop;
+    private final Stopper stopper;
 
 
     @Override
@@ -28,16 +28,16 @@ public class RecursiveIndexer extends RecursiveTask<List<String>> {
         List<RecursiveIndexer> pageConstructors = new ArrayList<>(); // Создаем список задач
         List<String> children = new ArrayList<>();
 
-//        if(stop) return children;
+        if(stopper.isStop()){
+            System.out.println("ST___________OOOOOOOOOOOOOO____________________P");
+            return new ArrayList<>();
+        }
 
         try {
             Document doc = Jsoup.connect(address).get();
             Elements elements = doc.select("a");
             for(Element el : elements){
                 String child = el.attr("abs:href");
-//                if(!child.startsWith(address) || child.equals(address) || child.contains("#")) {
-//                    continue;
-//                }
                 if(!child.startsWith(baseUrl) || child.contains("#")) {
                     continue;
                 }
@@ -47,20 +47,9 @@ public class RecursiveIndexer extends RecursiveTask<List<String>> {
                     continue;
                 }
                 children.add(child);
-
-                System.out.println(child);
-//                int start = address.length();
-//                int end = child.length();
-//                if(child.substring(start).contains("/")) {
-//                    end = child.indexOf("/", start);
-//                }
-//
-//                child = child.substring(0, Math.min(end + 1, child.length()));
-//                childrenUrls.add(child);
-
             }
             for(String child : children) {  // Добавили ближайших детей, теперь каждому даем ту же задачу
-                RecursiveIndexer rec = new RecursiveIndexer(child, baseUrl, total);
+                RecursiveIndexer rec = new RecursiveIndexer(child, baseUrl, total, stopper);
                 rec.fork();
                 pageConstructors.add(rec);
             }
@@ -76,6 +65,10 @@ public class RecursiveIndexer extends RecursiveTask<List<String>> {
                 e.printStackTrace();
             }
             children.addAll(task.join());    // Добавляем результаты каждого ребенка
+        }
+        if(stopper.isStop()){
+            System.out.println("STOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOoooP");
+            return new ArrayList<>();
         }
 
         return children;

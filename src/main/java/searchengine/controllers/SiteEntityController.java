@@ -50,7 +50,12 @@ public class SiteEntityController {
     public void setStatus(@PathVariable int id, Status status ){
         SiteEntity sE = siteEntityRepository.findById(id).get();
         sE.setStatus(status);
+
+
+        System.out.println("Ставим статус " + status);
         siteEntityRepository.save(sE);
+        System.out.println("Поставили статус " + status);
+
     }
     @PutMapping("/sites/{id}/{lastError}")
     public void setError(@PathVariable int id, @PathVariable String lastError){

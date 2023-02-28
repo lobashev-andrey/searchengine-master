@@ -39,6 +39,6 @@ public class SiteEntity {
 
 
     @OneToMany(mappedBy = "id") // Надо ли тут LAZY? Попробовать
-    @Cascade(org.hibernate.annotations.CascadeType.MERGE)
+    @Cascade({org.hibernate.annotations.CascadeType.MERGE})
     private List<PageEntity> children = new ArrayList<>();
 }

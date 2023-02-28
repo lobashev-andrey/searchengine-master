@@ -30,61 +30,49 @@ public class IndexingServiceImpl implements IndexingService{
     private final PageEntityController pageEntityController;
     private final ConnectionConfig userAgent;
     private final ConnectionConfig referer;
-    private volatile boolean stop = false;
+    private final Stopper stopper = new Stopper();
 
 
     @Override
     public IndexingResponse getIndexing() {
         if(siteEntityController.isIndexing()){
-            System.out.println("INDEXING already");
             return new IndexingResponseFalse("Индексация уже запущена");
         }
 
+        stopper.setStop(false);
+        System.out.println("getIndexing " + stopper.isStop());
         List<Site> sitesForIndexing = sites.getSites();
 
         for(Site s : sitesForIndexing){
 
-            Thread a =
+            System.out.println("THREAD " + s.getUrl());
             new Thread(() -> {
-                System.out.println("thread");
-
+                urlPlusSlash(s);
                 cleanTablesForSite(s);
                 SiteEntity newSite = createIndexingSiteEntity(s);
-                System.out.println("kjkjkjkj");
-
                 newSitePagesAdder(newSite);
-
-
-
-
-
-                statusChanger(newSite, Status.INDEXED);
-                // если произошла ошибка и обход завершить не удалось, изменять статус на FAILED и вносить в поле last_error понятную информацию о произошедшей ошибке.
-//                String lastError = "jkjkjkjkj";
-//                setLastError(newSite, lastError);
-
-
-            });
-            a.start();
-            System.out.println("stop");
-            if(stop) a.interrupt();
-            System.out.println("stop  stop   stop **************************************");
+                statusChanger(newSite, stopper.isStop() ? Status.FAILED : Status.INDEXED);
+            }).start();
         }
+
 
         return new IndexingResponseTrue();
     }
 
+    public void urlPlusSlash(Site s){
+        String cleanUrl = s.getUrl().trim();
+        s.setUrl(cleanUrl + (cleanUrl.endsWith("/") ? "" : "/"));
+    }
 
 
-    // удалять все имеющиеся данные по этому сайту (записи из таблиц site и page);
     public void cleanTablesForSite(Site s){
         SiteEntity oldSite = siteEntityController.getSiteEntity(s.getUrl());
         if(oldSite != null){
-            pageEntityController.deletePageEntityBySiteId(oldSite.getId());
+//            int count = pageEntityController.deletePageEntityBySiteId(oldSite.getId());
+//            System.out.println("УДАЛЕНО " + count + s.getUrl());
             siteEntityController.deleteSiteEntity(oldSite);
         }
     }
-    // создавать в таблице site новую запись со статусом INDEXING;
     public SiteEntity createIndexingSiteEntity(Site s){
         SiteEntity newSite = new SiteEntity();
         newSite.setName(s.getName());
@@ -94,35 +82,44 @@ public class IndexingServiceImpl implements IndexingService{
         siteEntityController.addSiteEntity(newSite);
         return newSite;
     }
-    // обходить все страницы, начиная с главной, добавлять их адреса, статусы и содержимое в базу данных в таблицу page;
     public void newSitePagesAdder(SiteEntity newSite) {
         List<String> result = new ArrayList<>();
-//        result.add(newSite.getUrl());
         Set<String> total = new HashSet<>();
-        result.addAll(new ForkJoinPool().invoke(new RecursiveIndexer(newSite.getUrl(), newSite.getUrl(), total)));
+        result.add(newSite.getUrl());
+        total.add(newSite.getUrl());
 
+        System.out.println("ПЕРЕД result.addALL");
+        System.out.println("STOPPER " + stopper.isStop());
+
+        result.addAll(new ForkJoinPool().invoke(new RecursiveIndexer(newSite.getUrl(), newSite.getUrl(), total, stopper)));
+
+        System.out.println("ПОСЛЕ result.addALL");
+        System.out.println("STOPPER " + stopper.isStop());
+        if(stopper.isStop()){
+            System.out.println("55555555555555555555555555555555555555555555555555555555555555555555555");
+            result = new ArrayList<>();
+        }
+
+        System.out.println("RESULT *************" + result.size());
+        System.out.println("TOTAL **************" + total.size());
         for (String r : result) {
-            long time = Math.round(100 + 50 * Math.random());   //Math.round(500 + 4500 * Math.random());
+            long time = Math.round(100 + 50 * Math.random());
             try {
                 Thread.sleep(time);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
             pageAdder(r, newSite);
-            // в процессе обхода постоянно обновлять дату и время в поле status_time таблицы site на текущее;
             siteEntityController.refreshSiteEntity(newSite.getId());
+
+
         }
     }
     public void pageAdder(String path, SiteEntity newSite){
         PageEntity newPage = new PageEntity();
         Connection.Response response = null;
-
-        System.out.println("path ------------------------");
-        System.out.println(path);
-
         Document doc = null;
         int status_code = 800;
-
         try {
             response = Jsoup.connect(path)
                         .userAgent(userAgent.getUserAgent())
@@ -133,15 +130,8 @@ public class IndexingServiceImpl implements IndexingService{
         } catch (IOException e) {
             e.printStackTrace();
         }
-
-        System.out.println(status_code); // для sites last_error
-
-
-
         if(response == null) return;
-
         status_code = response.statusCode();
-        System.out.println(status_code + " status_code");///////////////////////////////////////
 
         try {
             doc = response.parse();
@@ -151,8 +141,6 @@ public class IndexingServiceImpl implements IndexingService{
         if(doc == null) return;
 
         String contentType = response.contentType();
-
-        System.out.println(contentType + " contentType");////////////////////////////////////
         String content = contentType;
         if(contentType != null && contentType.startsWith("text/html")){
             content = doc.html();
@@ -160,15 +148,12 @@ public class IndexingServiceImpl implements IndexingService{
         String rootPath = newSite.getUrl();
         path = path.substring(rootPath.length() - 1);
 
-        System.out.println(path); ///////////////////////////////////////////
-
         newPage.setSiteEntity(newSite);
         newPage.setCode(status_code);
         newPage.setPath(path);
         newPage.setContent(content);
         pageEntityController.addPageEntity(newPage);
     }
-    // по завершении обхода изменять статус (поле status) на INDEXED;
     public void statusChanger(SiteEntity newSite, Status status) {
         siteEntityController.setStatus(newSite.getId(), status);
     }
@@ -179,21 +164,14 @@ public class IndexingServiceImpl implements IndexingService{
     @Override
     public IndexingResponse stopIndexing() {
         if(siteEntityController.isIndexing()){
-
-            System.out.println("Индексация уже идет //////////////////////////////////////////////////");
-
-            // Остановить надо все потоки
-            stop = true;
-            // , а потом:
-
-
+            stopper.setStop(true);
+            System.out.println("stopIndexing " + stopper.isStop());
             for(int id : siteEntityController.listOfIndexing()) {
                 siteEntityController.setStatus(id, Status.FAILED);
                 siteEntityController.setError(id, "Индексация остановлена пользователем");
             }
             return new IndexingResponseTrue();
         }
-        System.out.println("Индексации нет //////////////////////////////////////////////////////////////");
         return new IndexingResponseFalse("Индексация не запущена");
     }
 }

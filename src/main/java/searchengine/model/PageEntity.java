@@ -3,6 +3,8 @@ package searchengine.model;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 import javax.persistence.*;
 
@@ -16,8 +18,9 @@ public class PageEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
 
-    @ManyToOne(cascade = CascadeType.MERGE, optional = false)
+    @ManyToOne(cascade = {CascadeType.MERGE}, optional = false)
     @JoinColumn(name = "site_id", nullable = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private SiteEntity siteEntity;
 
     @Column(columnDefinition = "VARCHAR(255)", nullable = false)

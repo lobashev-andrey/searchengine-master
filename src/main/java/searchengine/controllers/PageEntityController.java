@@ -29,12 +29,17 @@ public class PageEntityController {
         return pageEntityRepository.findByUrl(url) > 0;
     }
 
+
+
     @DeleteMapping("/pages")
-    public void deletePageEntityBySiteId(int site_id){
+    public int deletePageEntityBySiteId(int site_id){
         List<PageEntity> list = pageEntityRepository.findBySiteId(site_id);
+        int count = 0;
         for(PageEntity pe : list){
             pageEntityRepository.delete(pe);
+            count++;
         }
+        return count;
     }
 
 
