@@ -44,18 +44,15 @@ public class SiteEntityController {
 
     @PutMapping("/sites")
     public void refreshSiteEntity(int site_id){
-        siteEntityRepository.findById(site_id).get().setStatus_time(new Date());
+        SiteEntity sE = siteEntityRepository.findById(site_id).get();
+        sE.setStatus_time(new Date());
+        siteEntityRepository.save(sE);
     }
     @PutMapping("/sites/{id}")
     public void setStatus(@PathVariable int id, Status status ){
         SiteEntity sE = siteEntityRepository.findById(id).get();
         sE.setStatus(status);
-
-
-        System.out.println("Ставим статус " + status);
         siteEntityRepository.save(sE);
-        System.out.println("Поставили статус " + status);
-
     }
     @PutMapping("/sites/{id}/{lastError}")
     public void setError(@PathVariable int id, @PathVariable String lastError){

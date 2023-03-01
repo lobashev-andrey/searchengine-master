@@ -2,7 +2,6 @@ package searchengine.services;
 
 
 import lombok.AllArgsConstructor;
-import lombok.RequiredArgsConstructor;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -10,7 +9,6 @@ import org.jsoup.select.Elements;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.RecursiveTask;
@@ -38,7 +36,7 @@ public class RecursiveIndexer extends RecursiveTask<List<String>> {
             Elements elements = doc.select("a");
             for(Element el : elements){
                 String child = el.attr("abs:href");
-                if(!child.startsWith(baseUrl) || child.contains("#")) {
+                if(!child.startsWith(baseUrl) || child.contains("#") || child.contains(".pdf")|| child.contains(".jpeg")  || child.contains(".jpg") || child.contains(".png") || child.contains(".mp4") || child.contains(".docx") || child.contains(".doc") || child.contains(".xls") || child.contains(".pptx") || child.contains("?http") || child.contains("\\")) {
                     continue;
                 }
                 int before = total.size();

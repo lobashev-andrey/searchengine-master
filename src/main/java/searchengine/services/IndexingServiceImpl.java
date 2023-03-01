@@ -38,21 +38,23 @@ public class IndexingServiceImpl implements IndexingService{
         if(siteEntityController.isIndexing()){
             return new IndexingResponseFalse("Индексация уже запущена");
         }
-
         stopper.setStop(false);
-        System.out.println("getIndexing " + stopper.isStop());
         List<Site> sitesForIndexing = sites.getSites();
 
         for(Site s : sitesForIndexing){
 
-            System.out.println("THREAD " + s.getUrl());
-            new Thread(() -> {
+            System.out.println("THREAD " + s.getUrl());       ////////////////////
+            Thread thread = new Thread(() -> {
+
                 urlPlusSlash(s);
                 cleanTablesForSite(s);
                 SiteEntity newSite = createIndexingSiteEntity(s);
                 newSitePagesAdder(newSite);
                 statusChanger(newSite, stopper.isStop() ? Status.FAILED : Status.INDEXED);
-            }).start();
+            });
+            thread.start();
+
+
         }
 
 
@@ -60,7 +62,8 @@ public class IndexingServiceImpl implements IndexingService{
     }
 
     public void urlPlusSlash(Site s){
-        String cleanUrl = s.getUrl().trim();
+        String rawUrl = s.getUrl().trim();
+        String cleanUrl = rawUrl.replace("http:", "https:");
         s.setUrl(cleanUrl + (cleanUrl.endsWith("/") ? "" : "/"));
     }
 
@@ -87,22 +90,12 @@ public class IndexingServiceImpl implements IndexingService{
         Set<String> total = new HashSet<>();
         result.add(newSite.getUrl());
         total.add(newSite.getUrl());
-
-        System.out.println("ПЕРЕД result.addALL");
-        System.out.println("STOPPER " + stopper.isStop());
-
         result.addAll(new ForkJoinPool().invoke(new RecursiveIndexer(newSite.getUrl(), newSite.getUrl(), total, stopper)));
-
-        System.out.println("ПОСЛЕ result.addALL");
-        System.out.println("STOPPER " + stopper.isStop());
-        if(stopper.isStop()){
-            System.out.println("55555555555555555555555555555555555555555555555555555555555555555555555");
-            result = new ArrayList<>();
-        }
-
-        System.out.println("RESULT *************" + result.size());
-        System.out.println("TOTAL **************" + total.size());
+//        if(stopper.isStop()){
+//            result = new ArrayList<>();
+//        }
         for (String r : result) {
+            if(stopper.isStop()){break;}
             long time = Math.round(100 + 50 * Math.random());
             try {
                 Thread.sleep(time);
@@ -111,8 +104,6 @@ public class IndexingServiceImpl implements IndexingService{
             }
             pageAdder(r, newSite);
             siteEntityController.refreshSiteEntity(newSite.getId());
-
-
         }
     }
     public void pageAdder(String path, SiteEntity newSite){

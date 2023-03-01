@@ -24,7 +24,7 @@ public class SiteEntity {
     @Column(columnDefinition = "ENUM('INDEXING', 'INDEXED', 'FAILED')", nullable = false)
     private Status status;
 
-    @Column(nullable = false)
+    @Column(columnDefinition = "DATETIME", nullable = false)
     private Date status_time;
 
     @Column(columnDefinition = "TEXT")
@@ -39,6 +39,6 @@ public class SiteEntity {
 
 
     @OneToMany(mappedBy = "id") // Надо ли тут LAZY? Попробовать
-    @Cascade({org.hibernate.annotations.CascadeType.MERGE})
+//    @Cascade(org.hibernate.annotations.CascadeType.REMOVE)
     private List<PageEntity> children = new ArrayList<>();
 }

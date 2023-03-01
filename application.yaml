@@ -24,12 +24,12 @@ indexing-settings:
 #      name: PlayBack.Ru
 #    - url: https://skillbox.ru/media/
 #      name: SomeStr
-    - url: http://radiomv.ru/
-      name: RadioMV
-    - url: https://ipfran.ru/
-      name: ИПФРАН
-    - url: https://dimonvideo.ru/
-      name: ДомВидео
+#    - url: http://radiomv.ru/
+#      name: RadioMV
+#    - url: https://ipfran.ru/
+#      name: ИПФРАН
+#    - url: https://dimonvideo.ru/
+#      name: ДомВидео
     - url: https://apn-p.ru/publication
       name: APN-P.ru
     - url: https://www.dextra.ru/services/
