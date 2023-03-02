@@ -35,12 +35,13 @@ public class IndexingServiceImpl implements IndexingService{
 
     @Override
     public IndexingResponse getIndexing() {
-        if(siteEntityController.isIndexing()){
-            return new IndexingResponseFalse("Индексация уже запущена");
+        synchronized (siteEntityController){
+            if(siteEntityController.isIndexing()){
+                return new IndexingResponseFalse("Индексация уже запущена");
+            }
+            stopper.setStop(false);
         }
-        stopper.setStop(false);
         List<Site> sitesForIndexing = sites.getSites();
-
         for(Site s : sitesForIndexing){
 
             System.out.println("THREAD " + s.getUrl());       ////////////////////
@@ -53,23 +54,20 @@ public class IndexingServiceImpl implements IndexingService{
                 statusChanger(newSite, stopper.isStop() ? Status.FAILED : Status.INDEXED);
             });
             thread.start();
-
-
         }
-
-
         return new IndexingResponseTrue();
     }
 
     public void urlPlusSlash(Site s){
         String rawUrl = s.getUrl().trim();
-        String cleanUrl = rawUrl.replace("http:", "https:");
+        String cleanUrl = httpToHttpS(rawUrl);
         s.setUrl(cleanUrl + (cleanUrl.endsWith("/") ? "" : "/"));
     }
-
-
+    public String httpToHttpS(String url){
+        return url.replace("http:", "https:");
+    }
     public void cleanTablesForSite(Site s){
-        SiteEntity oldSite = siteEntityController.getSiteEntity(s.getUrl());
+        SiteEntity oldSite = siteEntityController.getSiteEntityByUrl(s.getUrl());
         if(oldSite != null){
 //            int count = pageEntityController.deletePageEntityBySiteId(oldSite.getId());
 //            System.out.println("УДАЛЕНО " + count + s.getUrl());
@@ -117,7 +115,7 @@ public class IndexingServiceImpl implements IndexingService{
                         .referrer(referer.getReferer())
                         .execute();
         } catch (HttpStatusException ex) {
-            status_code = ex.getStatusCode();
+            status_code = ex.getStatusCode();//////////////  Тут статус код ИСКЛЮЧЕНИЯ, а не ответа
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -153,10 +151,10 @@ public class IndexingServiceImpl implements IndexingService{
     }
 
     @Override
-    public IndexingResponse stopIndexing() {
+    public synchronized IndexingResponse stopIndexing() {
         if(siteEntityController.isIndexing()){
             stopper.setStop(true);
-            System.out.println("stopIndexing " + stopper.isStop());
+            System.out.println("stopIndexing " + stopper.isStop());/////////////////////////////
             for(int id : siteEntityController.listOfIndexing()) {
                 siteEntityController.setStatus(id, Status.FAILED);
                 siteEntityController.setError(id, "Индексация остановлена пользователем");
@@ -165,6 +163,44 @@ public class IndexingServiceImpl implements IndexingService{
         }
         return new IndexingResponseFalse("Индексация не запущена");
     }
+
+    @Override
+    public IndexingResponse getOnePageIndexing(String path) {
+        if(belongsToSite(path) == null){
+            return new IndexingResponseFalse("Данная страница находится " +
+                    "за пределами сайтов, указанных в конфигурационном файле");
+        }
+        Site s = belongsToSite(path);
+        String base = s.getUrl();
+        System.out.println("base " + base);
+        System.out.println("path " + path);
+
+        if(path.equals(base.substring(0, base.length() - 1))){
+            path = base;
+        }
+        System.out.println("path 2 " + path);
+
+        // Проверяем, есть ли сайт в таблице, если нет - добавляем
+        SiteEntity siteEntity = siteEntityController.getSiteEntityByUrl(base);
+        if(siteEntity == null){
+            siteEntity = createIndexingSiteEntity(s);
+        }
+        pageAdder(path, siteEntity);
+        siteEntityController.refreshSiteEntity(siteEntity.getId());
+        return new IndexingResponseTrue();
+    }
+    public Site belongsToSite(String url){
+        List<Site> sitesForIndexing = sites.getSites();
+        for(Site s : sitesForIndexing){
+            urlPlusSlash(s);
+            String base = s.getUrl();
+            if(url.startsWith(base) || url.equals(base.substring(0, base.length() - 1))){
+                return s;
+            }
+        }
+        return null;
+    }
+
 }
 
 

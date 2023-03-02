@@ -23,6 +23,6 @@ public class IndexEntity {
     @Column(columnDefinition = "INT", nullable = false)
     private int lemma_id;
 
-    @Column(columnDefinition = "FLOAT", nullable = false)
+    @Column(columnDefinition = "FLOAT", nullable = false, name = "`rank`")
     private float rank;
 }

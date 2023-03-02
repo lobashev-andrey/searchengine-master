@@ -23,7 +23,7 @@ public class SiteEntityController {
         siteEntityRepository.delete(siteEntity);
     }
     @GetMapping("/sites")
-    public SiteEntity getSiteEntity(String url){
+    public SiteEntity getSiteEntityByUrl(String url){
         Iterable<SiteEntity> allSites = siteEntityRepository.findAll();
         for(SiteEntity se : allSites){
             if(se.getUrl().equals(url)){
@@ -52,10 +52,11 @@ public class SiteEntityController {
     public void setStatus(@PathVariable int id, Status status ){
         SiteEntity sE = siteEntityRepository.findById(id).get();
         sE.setStatus(status);
+        sE.setStatus_time(new Date());
         siteEntityRepository.save(sE);
     }
     @PutMapping("/sites/{id}/{lastError}")
-    public void setError(@PathVariable int id, @PathVariable String lastError){
+    public void setError(@PathVariable int id, @PathVariable String lastError ){
         SiteEntity sE = siteEntityRepository.findById(id).get();
         sE.setLast_error(lastError);
         siteEntityRepository.save(sE);
