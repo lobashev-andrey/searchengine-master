@@ -25,4 +25,10 @@ public class IndexEntity {
 
     @Column(columnDefinition = "FLOAT", nullable = false, name = "`rank`")
     private float rank;
+
+    public IndexEntity(int page_id, int lemma_id, float rank) {
+        this.page_id = page_id;
+        this.lemma_id = lemma_id;
+        this.rank = rank;
+    }
 }

@@ -11,7 +11,7 @@ import javax.persistence.*;
 @NoArgsConstructor
 @Entity
 @Table(name = "lemmas")
-public class Lemma {
+public class LemmaEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,4 +26,9 @@ public class Lemma {
     @Column(columnDefinition = "INT", nullable = false)
     private int frequency;
 
+    public LemmaEntity(int site_id, String lemma, int frequency) {
+        this.site_id = site_id;
+        this.lemma = lemma;
+        this.frequency = frequency;
+    }
 }

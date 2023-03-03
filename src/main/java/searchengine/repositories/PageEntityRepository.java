@@ -25,13 +25,15 @@ public interface PageEntityRepository extends CrudRepository<PageEntity, Integer
     @Query(value = "SELECT COUNT(*) from pages where `path` = :currentUrl", nativeQuery = true)
     int findByUrl(String currentUrl);
 
-    @Query(value = "SELECT * from pages where `site_id` = :site_id", nativeQuery = true)
-    List<PageEntity> findBySiteId(int site_id);
+//    @Query(value = "SELECT * from pages where `site_id` = :site_id", nativeQuery = true)
+//    List<PageEntity> findBySiteId(int site_id);
+
+    @Query(value = "SELECT * from pages where `site_id` = :site_id AND `path` = :currentUrl", nativeQuery = true)
+    PageEntity findBySiteIdAndPath(int site_id, String currentUrl);
 
 
 
-//    @Query(value = "ALTER TABLE `pages` ADD FOREIGN KEY(`site_id`) REFERENCES `sites`(`id`) ON DELETE CASCADE;SELECT COUNT(*) from pages where url = currentUrl", nativeQuery = true)
-//    int setCascadeSiteId();
+
 }
 
 

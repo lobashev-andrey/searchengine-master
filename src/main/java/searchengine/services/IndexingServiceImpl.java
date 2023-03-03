@@ -9,14 +9,14 @@ import org.springframework.stereotype.Service;
 import searchengine.config.ConnectionConfig;
 import searchengine.config.Site;
 import searchengine.config.SitesList;
+import searchengine.controllers.IndexController;
+import searchengine.controllers.LemmaController;
 import searchengine.controllers.PageEntityController;
 import searchengine.controllers.SiteEntityController;
 import searchengine.dto.indexing.IndexingResponse;
 import searchengine.dto.indexing.IndexingResponseFalse;
 import searchengine.dto.indexing.IndexingResponseTrue;
-import searchengine.model.PageEntity;
-import searchengine.model.SiteEntity;
-import searchengine.model.Status;
+import searchengine.model.*;
 
 import java.io.IOException;
 import java.util.*;
@@ -28,9 +28,13 @@ public class IndexingServiceImpl implements IndexingService{
     private final SitesList sites;
     private final SiteEntityController siteEntityController;
     private final PageEntityController pageEntityController;
+    private final LemmaController lemmaController;
+    private final IndexController indexController;
+
     private final ConnectionConfig userAgent;
     private final ConnectionConfig referer;
     private final Stopper stopper = new Stopper();
+
 
 
     @Override
@@ -55,6 +59,7 @@ public class IndexingServiceImpl implements IndexingService{
             });
             thread.start();
         }
+        stopIndexing(); // Нуждается в проверке - вырубит ли кнопку?????
         return new IndexingResponseTrue();
     }
 
@@ -165,28 +170,28 @@ public class IndexingServiceImpl implements IndexingService{
     }
 
     @Override
-    public IndexingResponse getOnePageIndexing(String path) {
-        if(belongsToSite(path) == null){
+    public IndexingResponse getOnePageIndexing(String url) {
+        if(belongsToSite(url) == null){
             return new IndexingResponseFalse("Данная страница находится " +
                     "за пределами сайтов, указанных в конфигурационном файле");
         }
-        Site s = belongsToSite(path);
+        Site s = belongsToSite(url);
         String base = s.getUrl();
-        System.out.println("base " + base);
-        System.out.println("path " + path);
-
-        if(path.equals(base.substring(0, base.length() - 1))){
-            path = base;
+        if(url.equals(base.substring(0, base.length() - 1))){
+            url = base;
         }
-        System.out.println("path 2 " + path);
-
-        // Проверяем, есть ли сайт в таблице, если нет - добавляем
-        SiteEntity siteEntity = siteEntityController.getSiteEntityByUrl(base);
+        SiteEntity siteEntity = siteEntityController.getSiteEntityByUrl(base); // Проверяем, есть ли сайт в таблице, если нет - добавляем
         if(siteEntity == null){
             siteEntity = createIndexingSiteEntity(s);
         }
-        pageAdder(path, siteEntity);
-        siteEntityController.refreshSiteEntity(siteEntity.getId());
+
+        try {
+            pageAndLemmasAdder(url, siteEntity);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        siteEntityController.refreshSiteEntity(siteEntity.getId()); // После лемматизации обновляем время в sites
         return new IndexingResponseTrue();
     }
     public Site belongsToSite(String url){
@@ -201,6 +206,81 @@ public class IndexingServiceImpl implements IndexingService{
         return null;
     }
 
+    public void pageAndLemmasAdder(String url, SiteEntity newSite) throws IOException {
+        String path = pathFromUrl(url, newSite);
+        if(pageEntityController.containsSiteIdAndPath(newSite.getId(), path)){   // Есть такая страница(site_id & path) - удаляем
+            System.out.println("YES");
+            pageEntityController.deletePageBySiteIdAndPath(newSite.getId(), path);
+        }
+
+        Connection.Response response = getResponse(url);
+        Document doc = null;
+        int status_code;
+        if(response == null) return;
+        status_code = response.statusCode();
+
+        try {
+            doc = response.parse();
+        } catch (IOException e) {
+            System.out.println("IOException");
+        }
+        if(doc == null) return;
+
+        String contentType = response.contentType(); // Контент
+        String content = contentType;
+        if(contentType != null && contentType.startsWith("text/html")){
+            content = doc.html();
+        }
+        PageEntity newPage = new PageEntity(newSite, path, status_code, content);
+        int page_id = pageEntityController.addPageEntity(newPage);
+
+        // Добавили страницу, теперь добавляем леммы и индексы
+        TextLemmasParser parser = new TextLemmasParser(); // НАДО СДЕЛАТЬ ОБЩИМ ПОТОМ для потока
+        System.out.println("После парсера");
+        String text = parser.htmlTagsRemover(content);  // Очистили от тэгов
+        System.out.println("После очистки");
+
+
+
+
+
+
+        HashMap<String, Integer> lemmas = parser.lemmasCounter(text); // Список лемм
+        System.out.println("После леммас");
+
+
+        for(String lemma : lemmas.keySet()){
+            System.out.println("Лемма " + lemma);
+            Integer lemma_id = lemmaController.getLemmaId(newSite.getId(), lemma);  // Получаем id, если есть
+            if(lemma_id == null){
+                LemmaEntity lemmaEntity = new LemmaEntity(newSite.getId(), lemma, 1);
+                lemma_id = lemmaController.addLemma(lemmaEntity);  //  Или добавили новую
+            } else {
+                lemmaController.increaseFrequency(lemma_id);  // Или повысили frequency
+            }
+
+            //  Теперь будем заниматься индексом
+            IndexEntity indexEntity = new IndexEntity(page_id, lemma_id, lemmas.get(lemma));
+            indexController.addIndex(indexEntity);
+        }
+    }
+
+    public Connection.Response getResponse(String path){
+        Connection.Response response = null;
+        try {
+            response = Jsoup.connect(path)
+                    .userAgent(userAgent.getUserAgent())
+                    .referrer(referer.getReferer())
+                    .execute();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return response;
+    }
+
+    public String pathFromUrl(String url, SiteEntity newSite){
+        return url.substring(newSite.getUrl().length() - 1);
+    }
 }
 
 

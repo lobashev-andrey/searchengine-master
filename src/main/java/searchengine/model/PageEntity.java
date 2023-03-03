@@ -32,4 +32,10 @@ public class PageEntity {
     @Column(columnDefinition = "MEDIUMTEXT", nullable = false)
     private String content;
 
+    public PageEntity(SiteEntity siteEntity, String path, int code, String content) {
+        this.siteEntity = siteEntity;
+        this.path = path;
+        this.code = code;
+        this.content = content;
+    }
 }

@@ -17,5 +17,7 @@ public interface SiteEntityRepository extends CrudRepository<SiteEntity, Integer
 
 
 
+
+
 }
 
