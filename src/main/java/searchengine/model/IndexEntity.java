@@ -3,6 +3,8 @@ package searchengine.model;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 import javax.persistence.*;
 
@@ -17,8 +19,10 @@ public class IndexEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
 
-    @Column(columnDefinition = "INT", nullable = false)
-    private int page_id;
+    @ManyToOne(cascade = {CascadeType.MERGE}, optional = false)
+    @JoinColumn(name = "page_id", nullable = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    private PageEntity pageEntity;
 
     @Column(columnDefinition = "INT", nullable = false)
     private int lemma_id;
@@ -26,8 +30,8 @@ public class IndexEntity {
     @Column(columnDefinition = "FLOAT", nullable = false, name = "`rank`")
     private float rank;
 
-    public IndexEntity(int page_id, int lemma_id, float rank) {
-        this.page_id = page_id;
+    public IndexEntity(PageEntity pageEntity, int lemma_id, float rank) {
+        this.pageEntity = pageEntity;
         this.lemma_id = lemma_id;
         this.rank = rank;
     }

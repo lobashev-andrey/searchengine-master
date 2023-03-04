@@ -15,8 +15,6 @@ public class PageEntityController {
     @Autowired
     PageEntityRepository pageEntityRepository;
 
-
-
     @PostMapping("/pages")
     public int addPageEntity(PageEntity pageEntity){
         pageEntityRepository.save(pageEntity);
@@ -24,20 +22,24 @@ public class PageEntityController {
     }
 
 //    @GetMapping("/pages")
-//    public boolean containsUrl(String url){
-//        return pageEntityRepository.findByUrl(url) > 0;
+//    public boolean containsSiteIdAndPath(int site_id, String url){
+//        return pageEntityRepository.findBySiteIdAndPath(site_id, url) != null;
 //    }
 
     @GetMapping("/pages")
-    public boolean containsSiteIdAndPath(int site_id, String url){
-        return pageEntityRepository.findBySiteIdAndPath(site_id, url) != null;
+    public PageEntity findBySiteIdAndPath(int site_id, String url){
+        return pageEntityRepository.findBySiteIdAndPath(site_id, url);
     }
+
+
 
     @DeleteMapping("/pages")
     public void deletePageBySiteIdAndPath(int site_id, String url){
         PageEntity pageEntity = pageEntityRepository.findBySiteIdAndPath(site_id, url);
         pageEntityRepository.delete(pageEntity);
     }
+
+
 
 
 

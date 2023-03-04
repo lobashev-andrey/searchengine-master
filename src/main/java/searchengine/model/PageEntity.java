@@ -7,6 +7,8 @@ import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
 import javax.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
@@ -31,6 +33,11 @@ public class PageEntity {
 
     @Column(columnDefinition = "MEDIUMTEXT", nullable = false)
     private String content;
+
+
+
+    @OneToMany(mappedBy = "id")
+    private List<IndexEntity> list = new ArrayList<>();
 
     public PageEntity(SiteEntity siteEntity, String path, int code, String content) {
         this.siteEntity = siteEntity;

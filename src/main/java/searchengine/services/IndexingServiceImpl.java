@@ -113,14 +113,12 @@ public class IndexingServiceImpl implements IndexingService{
         PageEntity newPage = new PageEntity();
         Connection.Response response = null;
         Document doc = null;
-        int status_code = 800;
+        int status_code;
         try {
             response = Jsoup.connect(path)
                         .userAgent(userAgent.getUserAgent())
                         .referrer(referer.getReferer())
                         .execute();
-        } catch (HttpStatusException ex) {
-            status_code = ex.getStatusCode();//////////////  Тут статус код ИСКЛЮЧЕНИЯ, а не ответа
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -208,8 +206,10 @@ public class IndexingServiceImpl implements IndexingService{
 
     public void pageAndLemmasAdder(String url, SiteEntity newSite) throws IOException {
         String path = pathFromUrl(url, newSite);
-        if(pageEntityController.containsSiteIdAndPath(newSite.getId(), path)){   // Есть такая страница(site_id & path) - удаляем
+        if(pageEntityController.findBySiteIdAndPath(newSite.getId(), path) != null){   // Есть такая страница(site_id & path) - удаляем
             System.out.println("YES");
+            // Тут бы надо хранимую процедуру с уменьшением frequency, но пока так:
+            decreaseFrequency(newSite.getId(), path);
             pageEntityController.deletePageBySiteIdAndPath(newSite.getId(), path);
         }
 
@@ -236,13 +236,7 @@ public class IndexingServiceImpl implements IndexingService{
 
         // Добавили страницу, теперь добавляем леммы и индексы
         TextLemmasParser parser = new TextLemmasParser(); // НАДО СДЕЛАТЬ ОБЩИМ ПОТОМ для потока
-        System.out.println("После парсера");
         String text = parser.htmlTagsRemover(content);  // Очистили от тэгов
-        System.out.println("После очистки");
-
-
-
-
 
 
         HashMap<String, Integer> lemmas = parser.lemmasCounter(text); // Список лемм
@@ -260,7 +254,7 @@ public class IndexingServiceImpl implements IndexingService{
             }
 
             //  Теперь будем заниматься индексом
-            IndexEntity indexEntity = new IndexEntity(page_id, lemma_id, lemmas.get(lemma));
+            IndexEntity indexEntity = new IndexEntity(newPage, lemma_id, lemmas.get(lemma));
             indexController.addIndex(indexEntity);
         }
     }
@@ -280,6 +274,16 @@ public class IndexingServiceImpl implements IndexingService{
 
     public String pathFromUrl(String url, SiteEntity newSite){
         return url.substring(newSite.getUrl().length() - 1);
+    }
+
+    public void decreaseFrequency(int site_id, String path){
+        // Получаем в indexes все lemma_id для этого path
+        PageEntity pageEntity = pageEntityController.findBySiteIdAndPath(site_id, path);
+        List<Integer> lemmaIds = indexController.getLemmaIdsOfPage(pageEntity.getId());
+        // в lemmas:   frequency--
+        for(Integer id : lemmaIds){
+            lemmaController.decreaseFrequency(id);
+        }
     }
 }
 

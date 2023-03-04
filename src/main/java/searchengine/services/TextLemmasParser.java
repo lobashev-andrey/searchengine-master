@@ -21,30 +21,22 @@ public class TextLemmasParser {
     public HashMap<String, Integer> lemmasCounter(String text) throws IOException {
         LuceneMorphology luceneMorph = new RussianLuceneMorphology();
         HashMap<String, Integer> map = new HashMap<>();
-        ////////
-        // LowerText !!!!
-        Pattern p = Pattern.compile("[а-я]+");  ////////////?????????????????????????
+
+        Pattern p = Pattern.compile("[а-яё-]+");
         Matcher m = p.matcher(text.toLowerCase());
         ArrayList<String> words = new ArrayList<>();
         while(m.find()){
-            String line = m.group();
-            System.out.println("/// " + line);
-            words.add(line);
-        }
-
-
-
-//        String[] words = text.toLowerCase().split("[^а-я]+");
-
-        for(String word : words){
-            System.out.println("** " + word + (int)word.charAt(0));
-
-        }
-        System.out.println("ЭТО ВСЕ СЛОВА " + words.size());
-        for(String word : words){
+            String word = m.group();
+//            words.add(word);
+//        }
+//
+//        for(String word : words){
             List<String> wordBaseForms = luceneMorph.getMorphInfo(word);
             wordBaseForms.stream()
-                    .filter(a->!a.contains("СОЮЗ") && !a.contains("ПРЕДЛ") && !a.contains("ЧАСТ"))
+                    .filter(a->!a.contains("СОЮЗ")
+                            && !a.contains("ПРЕДЛ") && !a.contains("ЧАСТ")
+                            && !a.startsWith("-") && !a.contains("-|")
+                            && (a.indexOf("|") > 1 || a.charAt(0) == 'я'))
                     .map(a-> a.substring(0, a.indexOf("|")))
                     .forEach(a->map.put(a, map.containsKey(a) ? map.get(a) + 1 : 1));
         }
