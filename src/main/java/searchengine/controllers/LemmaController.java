@@ -2,10 +2,7 @@ package searchengine.controllers;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.*;
 import searchengine.model.LemmaEntity;
 import searchengine.repositories.LemmaRepository;
 
@@ -51,5 +48,11 @@ public class LemmaController {
     public int addLemma(LemmaEntity lemmaEntity){
         lemmaRepository.save(lemmaEntity);
         return lemmaEntity.getId();
+    }
+
+    @DeleteMapping("/lemmas")
+    public void deleteBySiteId(int site_id){
+        Iterable<Integer> iterable = lemmaRepository.getLemmaIdBySiteId(site_id);
+        lemmaRepository.deleteAllById(iterable);
     }
 }

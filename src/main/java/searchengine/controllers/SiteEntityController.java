@@ -32,6 +32,7 @@ public class SiteEntityController {
         }
         return null;
     }
+
     @GetMapping("/sites/isIndexing")
     public boolean isIndexing(){
         return siteEntityRepository.countIndexing() > 0;

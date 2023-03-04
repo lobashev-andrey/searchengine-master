@@ -73,9 +73,11 @@ public class IndexingServiceImpl implements IndexingService{
     }
     public void cleanTablesForSite(Site s){
         SiteEntity oldSite = siteEntityController.getSiteEntityByUrl(s.getUrl());
+        int site_id;
         if(oldSite != null){
-//            int count = pageEntityController.deletePageEntityBySiteId(oldSite.getId());
-//            System.out.println("УДАЛЕНО " + count + s.getUrl());
+            // Узнали id сайта, теперь уберем упоминания из lemmas
+            lemmaController.deleteBySiteId(oldSite.getId());
+            // А потом и сам сайт - а он каскадом уберет страницы и индексы
             siteEntityController.deleteSiteEntity(oldSite);
         }
     }
@@ -94,9 +96,9 @@ public class IndexingServiceImpl implements IndexingService{
         result.add(newSite.getUrl());
         total.add(newSite.getUrl());
         result.addAll(new ForkJoinPool().invoke(new RecursiveIndexer(newSite.getUrl(), newSite.getUrl(), total, stopper)));
-//        if(stopper.isStop()){
-//            result = new ArrayList<>();
-//        }
+
+        long start = System.currentTimeMillis();   ////////////////////////
+
         for (String r : result) {
             if(stopper.isStop()){break;}
             long time = Math.round(100 + 50 * Math.random());
@@ -107,21 +109,58 @@ public class IndexingServiceImpl implements IndexingService{
             }
             pageAdder(r, newSite);
             siteEntityController.refreshSiteEntity(newSite.getId());
+
+            System.out.println("***************************************************");
+            System.out.println("***************************************************");
+            System.out.println("***************************************************");
+            System.out.println(System.currentTimeMillis() - start);
+
         }
+
     }
-    public void pageAdder(String path, SiteEntity newSite){
-        PageEntity newPage = new PageEntity();
-        Connection.Response response = null;
+    // Старый pageAdder - на всякий случай
+//    public void pageAdder(String path, SiteEntity newSite){
+//        PageEntity newPage = new PageEntity();
+//        Connection.Response response = null;
+//        Document doc = null;
+//        int status_code;
+//        try {
+//            response = Jsoup.connect(path)
+//                        .userAgent(userAgent.getUserAgent())
+//                        .referrer(referer.getReferer())
+//                        .execute();
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//        if(response == null) return;
+//        status_code = response.statusCode();
+//
+//        try {
+//            doc = response.parse();
+//        } catch (IOException e) {
+//            System.out.println("IOException");
+//        }
+//        if(doc == null) return;
+//
+//        String contentType = response.contentType();
+//        String content = contentType;
+//        if(contentType != null && contentType.startsWith("text/html")){
+//            content = doc.html();
+//        }
+//        String rootPath = newSite.getUrl();
+//        path = path.substring(rootPath.length() - 1);
+//
+//        newPage.setSiteEntity(newSite);
+//        newPage.setCode(status_code);
+//        newPage.setPath(path);
+//        newPage.setContent(content);
+//        pageEntityController.addPageEntity(newPage);
+//    }  //
+
+    public void pageAdder(String url, SiteEntity newSite){
+        Connection.Response response = getResponse(url);
         Document doc = null;
         int status_code;
-        try {
-            response = Jsoup.connect(path)
-                        .userAgent(userAgent.getUserAgent())
-                        .referrer(referer.getReferer())
-                        .execute();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
         if(response == null) return;
         status_code = response.statusCode();
 
@@ -132,20 +171,45 @@ public class IndexingServiceImpl implements IndexingService{
         }
         if(doc == null) return;
 
-        String contentType = response.contentType();
+        String contentType = response.contentType(); // Контент
         String content = contentType;
         if(contentType != null && contentType.startsWith("text/html")){
             content = doc.html();
         }
-        String rootPath = newSite.getUrl();
-        path = path.substring(rootPath.length() - 1);
+        String path = pathFromUrl(url, newSite);
+        PageEntity newPage = new PageEntity(newSite, path, status_code, content);
+        int page_id = pageEntityController.addPageEntity(newPage);
 
-        newPage.setSiteEntity(newSite);
-        newPage.setCode(status_code);
-        newPage.setPath(path);
-        newPage.setContent(content);
-        pageEntityController.addPageEntity(newPage);
+        // Добавили страницу, теперь добавляем леммы и индексы
+        TextLemmasParser parser = new TextLemmasParser(); // НАДО СДЕЛАТЬ ОБЩИМ ПОТОМ для потока
+        String text = parser.htmlTagsRemover(content);  // Очистили от тэгов
+
+
+        HashMap<String, Integer> lemmas; // Список лемм
+        try {
+            lemmas = parser.lemmasCounter(text);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        System.out.println("После леммас");
+
+
+        for(String lemma : lemmas.keySet()){
+            System.out.println("Лемма " + lemma);
+            Integer lemma_id = lemmaController.getLemmaId(newSite.getId(), lemma);  // Получаем id, если есть
+            if(lemma_id == null){
+                LemmaEntity lemmaEntity = new LemmaEntity(newSite.getId(), lemma, 1);
+                lemma_id = lemmaController.addLemma(lemmaEntity);  //  Или добавили новую
+            } else {
+                lemmaController.increaseFrequency(lemma_id);  // Или повысили frequency
+            }
+
+            //  Теперь будем заниматься индексом
+            IndexEntity indexEntity = new IndexEntity(newPage, lemma_id, lemmas.get(lemma));
+            indexController.addIndex(indexEntity);
+        }
     }
+
     public void statusChanger(SiteEntity newSite, Status status) {
         siteEntityController.setStatus(newSite.getId(), status);
     }
