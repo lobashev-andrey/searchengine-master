@@ -21,41 +21,26 @@ public class PageEntityController {
         return pageEntity.getId();
     }
 
-//    @GetMapping("/pages")
-//    public boolean containsSiteIdAndPath(int site_id, String url){
-//        return pageEntityRepository.findBySiteIdAndPath(site_id, url) != null;
-//    }
-
     @GetMapping("/pages")
     public PageEntity findBySiteIdAndPath(int site_id, String url){
         return pageEntityRepository.findBySiteIdAndPath(site_id, url);
     }
 
+    @GetMapping("/pages/countAll")
+    public int countAll(){
+        return (int) pageEntityRepository.count();
+    }
 
+    @GetMapping("/pages/{id}")
+    public int countBySiteId(int id){
+        return pageEntityRepository.countBySiteId(id);
+    }
 
     @DeleteMapping("/pages")
     public void deletePageBySiteIdAndPath(int site_id, String url){
         PageEntity pageEntity = pageEntityRepository.findBySiteIdAndPath(site_id, url);
         pageEntityRepository.delete(pageEntity);
     }
-
-
-
-
-
-//    @DeleteMapping("/pages")
-//    public int deletePageEntityBySiteId(int site_id){
-//        List<PageEntity> list = pageEntityRepository.findBySiteId(site_id);
-//        int count = 0;
-//        for(PageEntity pe : list){
-//            pageEntityRepository.delete(pe);
-//            count++;
-//        }
-//        return count;
-//    }
-
-
-
 }
 
 //@Repository

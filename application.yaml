@@ -30,8 +30,8 @@ indexing-settings:
 #      name: ИПФРАН
 #    - url: https://dimonvideo.ru/
 #      name: ДомВидео
-    - url: https://apn-p.ru/publication
-      name: APN-P.ru
+#    - url: https://apn-p.ru/publication
+#      name: APN-P.ru
     - url: https://www.dextra.ru/services/
       name: Декстра
 

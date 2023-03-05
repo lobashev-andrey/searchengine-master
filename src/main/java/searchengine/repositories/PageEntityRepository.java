@@ -25,8 +25,8 @@ public interface PageEntityRepository extends CrudRepository<PageEntity, Integer
     @Query(value = "SELECT COUNT(*) from pages where `path` = :currentUrl", nativeQuery = true)
     int findByUrl(String currentUrl);
 
-//    @Query(value = "SELECT * from pages where `site_id` = :site_id", nativeQuery = true)
-//    List<PageEntity> findBySiteId(int site_id);
+    @Query(value = "SELECT COUNT(*) from pages where `site_id` = :site_id", nativeQuery = true)
+    int countBySiteId(int site_id);
 
     @Query(value = "SELECT * from pages where `site_id` = :site_id AND `path` = :currentUrl", nativeQuery = true)
     PageEntity findBySiteIdAndPath(int site_id, String currentUrl);

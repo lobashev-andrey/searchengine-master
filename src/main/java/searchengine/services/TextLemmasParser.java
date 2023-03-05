@@ -13,10 +13,11 @@ import java.util.regex.Pattern;
 public class TextLemmasParser {
 
     public String htmlTagsRemover(String text){
-        Pattern p = Pattern.compile("<.+?>");
+        Pattern p = Pattern.compile("<script.+?/script>|<.+?>");
         Matcher m = p.matcher(text);
-        return m.replaceAll(" ").replaceAll("\n", "");
+        return m.replaceAll(" ");
     }
+
 
     public HashMap<String, Integer> lemmasCounter(String text) throws IOException {
         LuceneMorphology luceneMorph = new RussianLuceneMorphology();
@@ -27,14 +28,10 @@ public class TextLemmasParser {
         ArrayList<String> words = new ArrayList<>();
         while(m.find()){
             String word = m.group();
-//            words.add(word);
-//        }
-//
-//        for(String word : words){
             List<String> wordBaseForms = luceneMorph.getMorphInfo(word);
             wordBaseForms.stream()
-                    .filter(a->!a.contains("СОЮЗ")
-                            && !a.contains("ПРЕДЛ") && !a.contains("ЧАСТ")
+                    .filter(a->!a.contains("СОЮЗ") && !a.contains("ПРЕДЛ")
+                            && !a.contains("ЧАСТ") && !a.contains("МЕЖД")
                             && !a.startsWith("-") && !a.contains("-|")
                             && (a.indexOf("|") > 1 || a.charAt(0) == 'я'))
                     .map(a-> a.substring(0, a.indexOf("|")))

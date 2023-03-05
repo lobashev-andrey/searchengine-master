@@ -16,5 +16,11 @@ public interface LemmaRepository extends CrudRepository<LemmaEntity, Integer> {
     @Query(value = "SELECT id FROM lemmas WHERE `site_id` = :site_id", nativeQuery = true)
     Iterable<Integer> getLemmaIdBySiteId(int site_id);
 
+    @Query(value = "SELECT COUNT(*) FROM lemmas WHERE `site_id` = :site_id", nativeQuery = true)
+    int countLemmaBySiteId(int site_id);
+
+    @Query(value = "SELECT SUM(`frequency`) FROM lemmas WHERE `lemma` = :lemma", nativeQuery = true)
+    int getSumFrequency(String lemma);
+
 
 }

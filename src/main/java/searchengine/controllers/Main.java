@@ -28,7 +28,7 @@ public class Main {
         LuceneMorphology luceneMorph =
                 new RussianLuceneMorphology();
         List<String> wordBaseForms =
-                luceneMorph.getMorphInfo("и");
+                luceneMorph.getMorphInfo("ох");
         wordBaseForms.forEach(System.out::println);
 
 

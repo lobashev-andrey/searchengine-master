@@ -20,6 +20,16 @@ public class LemmaController {
         return optional.orElse(null);
     }
 
+    @GetMapping("/lemmas/{id}")
+    public int countLemmaBySiteId(@PathVariable int id){
+        return lemmaRepository.countLemmaBySiteId(id);
+    }
+
+    @GetMapping("/lemmas/{lemma}")
+    public int getSumFrequency(@PathVariable String lemma){
+        return lemmaRepository.getSumFrequency(lemma);
+    }
+
 //    @GetMapping("/lemmas/{id}")
 //    public LemmaEntity getLemmaById(@PathVariable int id){
 //        return lemmaRepository.findById(id).orElse(null);
@@ -55,4 +65,6 @@ public class LemmaController {
         Iterable<Integer> iterable = lemmaRepository.getLemmaIdBySiteId(site_id);
         lemmaRepository.deleteAllById(iterable);
     }
+
+
 }

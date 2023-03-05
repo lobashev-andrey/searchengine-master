@@ -115,6 +115,7 @@ public class IndexingServiceImpl implements IndexingService{
             System.out.println("***************************************************");
             System.out.println(System.currentTimeMillis() - start);
 
+
         }
 
     }
@@ -191,11 +192,9 @@ public class IndexingServiceImpl implements IndexingService{
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        System.out.println("После леммас");
 
 
         for(String lemma : lemmas.keySet()){
-            System.out.println("Лемма " + lemma);
             Integer lemma_id = lemmaController.getLemmaId(newSite.getId(), lemma);  // Получаем id, если есть
             if(lemma_id == null){
                 LemmaEntity lemmaEntity = new LemmaEntity(newSite.getId(), lemma, 1);
@@ -252,8 +251,8 @@ public class IndexingServiceImpl implements IndexingService{
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-
         siteEntityController.refreshSiteEntity(siteEntity.getId()); // После лемматизации обновляем время в sites
+        statusChanger(siteEntity, Status.INDEXED);
         return new IndexingResponseTrue();
     }
     public Site belongsToSite(String url){
