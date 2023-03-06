@@ -1,10 +1,7 @@
 package searchengine.controllers;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import searchengine.dto.indexing.IndexingResponse;
 import searchengine.dto.statistics.StatisticsResponse;
 import searchengine.services.IndexingService;
@@ -45,7 +42,9 @@ public class ApiController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<IndexingResponse> search(String query){    // offset, limit ?????????
-        return ResponseEntity.ok(searchService.getSearch(query));
+    public ResponseEntity<IndexingResponse> search(@RequestParam String query, @RequestParam String site,
+                                                   @RequestParam(defaultValue = "0") int offset,
+                                                   @RequestParam(defaultValue = "20") int limit){    // offset, limit ?????????
+        return ResponseEntity.ok(searchService.getSearch(query, site, offset, limit));
     }
 }

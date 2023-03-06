@@ -2,7 +2,6 @@ package searchengine.services;
 
 import lombok.RequiredArgsConstructor;
 import org.jsoup.Connection;
-import org.jsoup.HttpStatusException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.springframework.stereotype.Service;
@@ -342,7 +341,7 @@ public class IndexingServiceImpl implements IndexingService{
     public void decreaseFrequency(int site_id, String path){
         // Получаем в indexes все lemma_id для этого path
         PageEntity pageEntity = pageEntityController.findBySiteIdAndPath(site_id, path);
-        List<Integer> lemmaIds = indexController.getLemmaIdsOfPage(pageEntity.getId());
+        List<Integer> lemmaIds = indexController.getLemmaIdsByPageId(pageEntity.getId());
         // в lemmas:   frequency--
         for(Integer id : lemmaIds){
             lemmaController.decreaseFrequency(id);

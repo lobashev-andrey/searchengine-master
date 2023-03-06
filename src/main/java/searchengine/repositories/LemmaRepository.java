@@ -5,6 +5,7 @@ import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 import searchengine.model.LemmaEntity;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -20,7 +21,10 @@ public interface LemmaRepository extends CrudRepository<LemmaEntity, Integer> {
     int countLemmaBySiteId(int site_id);
 
     @Query(value = "SELECT SUM(`frequency`) FROM lemmas WHERE `lemma` = :lemma", nativeQuery = true)
-    int getSumFrequency(String lemma);
+    Optional<Integer> getSumFrequency(String lemma);
+
+    @Query(value = "SELECT id FROM lemmas WHERE `lemma` = :lemmaName", nativeQuery = true)
+    Iterable<Integer> getLemmaIdsByLemmaName(String lemmaName);
 
 
 }

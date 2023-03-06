@@ -12,4 +12,7 @@ public interface IndexRepository extends CrudRepository<IndexEntity, Integer> {
 
     @Query(value = "SELECT `lemma_id` FROM `indexes` WHERE page_id = :page_id", nativeQuery = true)
     List<Integer> lemmaIdsOfPage(int page_id);
+
+    @Query(value = "SELECT page_id FROM `indexes` WHERE `lemma_id` IN :lemmaIds", nativeQuery = true)
+    List<Integer> getPageIdsByLemmaIds(List<Integer> lemmaIds);
 }

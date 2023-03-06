@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.*;
 import searchengine.model.LemmaEntity;
 import searchengine.repositories.LemmaRepository;
 
-import java.util.Optional;
+import java.util.*;
 
 @Controller
 public class LemmaController {
@@ -26,14 +26,21 @@ public class LemmaController {
     }
 
     @GetMapping("/lemmas/{lemma}")
-    public int getSumFrequency(@PathVariable String lemma){
-        return lemmaRepository.getSumFrequency(lemma);
+    public Integer getSumFrequency(@PathVariable String lemma){
+        Optional<Integer> optional = lemmaRepository.getSumFrequency(lemma);
+        return optional.orElse(null);
     }
 
-//    @GetMapping("/lemmas/{id}")
-//    public LemmaEntity getLemmaById(@PathVariable int id){
-//        return lemmaRepository.findById(id).orElse(null);
-//    }
+    @GetMapping("/lemmas/{lemmaName}")
+    public List<Integer> getLemmaIdsByLemmaName(@PathVariable String lemmaName){
+        List<Integer> list = new ArrayList<>();
+        Iterable<Integer> iterable = lemmaRepository.getLemmaIdsByLemmaName(lemmaName);
+        iterable.forEach(list::add);
+        return list;
+    }
+
+
+
 
     @PutMapping("/lemmas")
     public void increaseFrequency(int id){
