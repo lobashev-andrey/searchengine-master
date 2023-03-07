@@ -8,7 +8,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import searchengine.model.IndexEntity;
 import searchengine.repositories.IndexRepository;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Controller
 public class IndexController {
@@ -27,10 +29,17 @@ public class IndexController {
         return indexRepository.lemmaIdsOfPage(id);
     }
 
-//    @GetMapping("/index/{lemma}")
-//    public List<Integer> getPageIdsByLemmaIds(List<Integer> lemmaIds){
-//        return indexRepository.getPageIdsByLemmaIds(lemmaIds);
-//    }
+    @GetMapping("/index/{lemma}")
+    public List<Integer> getPageIdsByLemmaIds(Integer[] lemmaIdsArray){
+        List<Integer> list = new ArrayList<>();
+        Iterable<Integer> iterable = indexRepository.getPageIdsByLemmaIds(lemmaIdsArray);
+        iterable.forEach(list::add);
+        return list;
+    }
 
-
+    @GetMapping("/index/{page_id}")
+    public Float sumRankByPageId(@PathVariable int page_id, Integer[] array){
+        Optional<Float> optional = indexRepository.sumRankByPageId(page_id, array);
+        return optional.orElse(null);
+    }
 }

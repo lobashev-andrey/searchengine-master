@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 import searchengine.model.IndexEntity;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface IndexRepository extends CrudRepository<IndexEntity, Integer> {
@@ -14,5 +15,8 @@ public interface IndexRepository extends CrudRepository<IndexEntity, Integer> {
     List<Integer> lemmaIdsOfPage(int page_id);
 
     @Query(value = "SELECT page_id FROM `indexes` WHERE `lemma_id` IN :lemmaIds", nativeQuery = true)
-    List<Integer> getPageIdsByLemmaIds(List<Integer> lemmaIds);
+    Iterable<Integer> getPageIdsByLemmaIds(Integer[] lemmaIds);
+
+    @Query(value = "SELECT SUM(`rank`) FROM `indexes` WHERE page_id = :page_id AND lemma_id IN :array", nativeQuery = true)
+    Optional<Float> sumRankByPageId(int page_id, Integer[] array);
 }

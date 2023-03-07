@@ -14,10 +14,10 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class SearchServiceImpl implements SearchService{
-    private final TextLemmasParser parser = new TextLemmasParser();
     private final LemmaController lemmaController;
     private final PageEntityController pageEntityController;
     private final IndexController indexController;
+    private final TextLemmasParser parser = new TextLemmasParser();
     private final int threshold = 70;
 
 
@@ -25,7 +25,7 @@ public class SearchServiceImpl implements SearchService{
 
     @Override
     public IndexingResponse getSearch(String query, String site, int offset, int limit) {
-        // Разбиваем на список (количество просто отбрасываем)
+        // Разбиваем запрос на список (количество просто отбрасываем)
         List<String> lemmas = new ArrayList<>();
         try {
             lemmas.addAll(parser.lemmasCounter(query).keySet());
@@ -35,48 +35,83 @@ public class SearchServiceImpl implements SearchService{
         // Сортировка по встречаемости: lemma - sum(frequency)
         Map<String, Integer> lemmaToAmountOfPages = new HashMap<>();
         for(String lemma : lemmas){
-            System.out.println(lemma);
-            System.out.println(lemmaController.getSumFrequency(lemma));
+//            System.out.print("Лемма " + lemma); System.out.println(" Встречаемость: " + lemmaController.getSumFrequency(lemma)); ////////
             Integer numPages = lemmaController.getSumFrequency(lemma);
             if(numPages != null){
                 lemmaToAmountOfPages.put(lemma, numPages);
             }
         }
-        deleteTooCommonLemmas(lemmaToAmountOfPages);
-        List<String> order = lemmaToAmountOfPages.keySet().stream().sorted(Comparator.comparing(lemmaToAmountOfPages::get)).collect(Collectors.toList());
-        System.out.println("order:"); //////////////////////////
-        order.forEach(a-> System.out.println(a + " " + lemmaToAmountOfPages.get(a))); ///////////////// печатаем order
-
+        deleteTooCommonLemmas(lemmaToAmountOfPages); // Убираем из HashMap слишком частые леммы
+        List<String> order = lemmaToAmountOfPages.keySet().stream()  //  - ТОЛЬКО РЕДКИЕ ЛЕММЫ
+                .sorted(Comparator.comparing(lemmaToAmountOfPages::get)).collect(Collectors.toList());
+//        System.out.println("order:"); //////////////////////////
+//        order.forEach(a-> System.out.println(a + " " + lemmaToAmountOfPages.get(a))); ///////////////// печатаем order
 
         // Отсортировали
-        // Находим страницы, где есть первое слово
-//        List<Integer> pagesToReduce = new ArrayList<>();
-//        int flag = 0;
-//        for(String lemmaName : order){
-//            List<Integer> currentList = new ArrayList<>();
-//            List<Integer> lemmaIds = lemmaController.getLemmaIdsByLemmaName(lemmaName); // Нашли Ids этого слова
-//            System.out.println(lemmaName);
-//            for(Integer i : lemmaIds) {
-//                System.out.println(i);
-//            }
-//            List<Integer> pageIds = indexController.getPageIdsByLemmaIds(lemmaIds);  // Нашли страницы, где оно есть
-//
-//            for(Integer i : pageIds){
-//                if(flag == 0){
-//                    pagesToReduce.add(i); // Первый раз наполняем оба, пересечение будет полным
-//                    currentList.add(i);
-//                } else {
-//                    currentList.add(i); // Теперь только меньший - и будем получать пересечение
-//                }
-//            }
-//            pagesToReduce = intersectionList(pagesToReduce, currentList);
-//            flag++;
+        // Находим страницы, где есть эти РЕДКИЕ ЛЕММЫ
+        List<Integer> pagesToReduce = new ArrayList<>();
+        Set<Integer> lemmaIdsForRank = new HashSet<>();
+        int flag = 0;
+        for(String lemmaName : order){
+            List<Integer> currentList = new ArrayList<>();
+            List<Integer> lemmaIds = lemmaController.getLemmaIdsByLemmaName(lemmaName);
+            lemmaIdsForRank.addAll(lemmaIds); // Сюда собираем lemma_id's от всех лемм, чтобы потом считать их sumRank на страницах
+            Integer[] lemmaIdsArray = new Integer[lemmaIds.size()];
+            for(int i = 0; i < lemmaIds.size(); i++){
+                lemmaIdsArray[i] = lemmaIds.get(i);
+            }
+            List<Integer> pageIds = indexController.getPageIdsByLemmaIds(lemmaIdsArray);  // Нашли страницы, где оно есть
+            for(Integer p : pageIds){
+                if(flag == 0){
+                    pagesToReduce.add(p); // Первый раз наполняем оба, пересечение будет полным
+                    currentList.add(p);
+                } else {
+                    currentList.add(p); // Теперь только меньший - и будем получать пересечение
+                }
+            }
+            pagesToReduce = intersectionList(pagesToReduce, currentList);
+            flag++;
 //            System.out.println("РАЗМЕР СПИСКА: " + pagesToReduce.size());
-//            pagesToReduce.forEach(System.out::print);
-//            System.out.println();
+//            pagesToReduce.forEach(System.out::println);
+        }
+        // Теперь в pagesToReduce мы имеем УМЕНЬШЕННЫЙ СПИСОК - в нем только те страницы, где есть все леммы (до порога)
+//        for(Integer i : pagesToReduce){
+//            System.out.println("page_id    , где есть все слова: "    + i);
 //        }
-        // Теперь мы имеем уменьшенный список - в нем только те страницы, где есть все леммы (до порога)
         // Берем страницу (id) и складываем rank всех лемм из order - это будет абсолютная релевантность
+
+        Integer[] lemmaIdsForRankArray = new Integer[lemmaIdsForRank.size()];
+        int i = 0;
+        for(Integer l : lemmaIdsForRank){
+            lemmaIdsForRankArray[i++] = l;
+        }
+
+        HashMap<Integer, Float> pageAndRank = new HashMap<>();
+        float maxRank = 0f;
+        for(Integer p : pagesToReduce){
+            Float absRank = indexController.sumRankByPageId(p, lemmaIdsForRankArray);
+            maxRank = Math.max(maxRank, absRank);
+//            System.out.println("Страница " + p + " absRank: " + absRank + " maxRank: " + maxRank);
+        }
+        for(Integer p : pagesToReduce){
+            Float absRank = indexController.sumRankByPageId(p, lemmaIdsForRankArray);
+            Float relRank = absRank / maxRank;
+            pageAndRank.put(p, relRank);
+            System.out.println("Страница " + p + " relRank: " + relRank);
+        }
+        List<Integer> finalOrderOfPages = pageAndRank.keySet().stream()
+                .sorted(Comparator.comparing(pageAndRank::get)
+                        .reversed()).collect(Collectors.toList());
+        for(Integer f : finalOrderOfPages){
+            System.out.println("Страница " + f + " и ее relRank: " + pageAndRank.get(f));
+
+
+
+
+
+        }
+
+
 
 
 
