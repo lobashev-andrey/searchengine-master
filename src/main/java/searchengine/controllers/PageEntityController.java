@@ -9,6 +9,7 @@ import searchengine.model.PageEntity;
 import searchengine.repositories.PageEntityRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Controller
 public class PageEntityController {
@@ -31,9 +32,15 @@ public class PageEntityController {
         return (int) pageEntityRepository.count();
     }
 
+    @GetMapping("/pages/{site_id}")
+    public int countBySiteId(int site_id){
+        return pageEntityRepository.countBySiteId(site_id);
+    }
+
     @GetMapping("/pages/{id}")
-    public int countBySiteId(int id){
-        return pageEntityRepository.countBySiteId(id);
+    public PageEntity getPageEntityById(int id){
+        Optional<PageEntity> optional = pageEntityRepository.findById(id);
+        return optional.orElse(null);
     }
 
     @DeleteMapping("/pages")

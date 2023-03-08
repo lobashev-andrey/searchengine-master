@@ -1,7 +1,8 @@
 package searchengine.services;
 
 import searchengine.dto.indexing.IndexingResponse;
+import searchengine.dto.search.SearchResponse;
 
 public interface SearchService {
-    IndexingResponse getSearch(String query, String site, int offset, int limit);
+    SearchResponse getSearch(String query, String site, int offset, int limit);
 }

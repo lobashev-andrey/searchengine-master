@@ -46,10 +46,7 @@ public class IndexingServiceImpl implements IndexingService{
         }
         List<Site> sitesForIndexing = sites.getSites();
         for(Site s : sitesForIndexing){
-
-            System.out.println("THREAD " + s.getUrl());       ////////////////////
             Thread thread = new Thread(() -> {
-
                 urlPlusSlash(s);
                 cleanTablesForSite(s);
                 SiteEntity newSite = createIndexingSiteEntity(s);

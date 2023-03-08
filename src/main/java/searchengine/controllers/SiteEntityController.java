@@ -25,7 +25,7 @@ public class SiteEntityController {
     public void deleteSiteEntity(SiteEntity siteEntity){
         siteEntityRepository.delete(siteEntity);
     }
-    @GetMapping("/sites/{id}")
+    @GetMapping("/sites/{url}")
     public SiteEntity getSiteEntityByUrl(@PathVariable String url){
         Iterable<SiteEntity> allSites = siteEntityRepository.findAll();
         for(SiteEntity se : allSites){
@@ -42,6 +42,12 @@ public class SiteEntityController {
         List<SiteEntity> siteEntities = new ArrayList<>();
         iterable.forEach(siteEntities::add);
         return siteEntities;
+    }
+
+    @GetMapping("/sites/{id}")
+    public SiteEntity getSiteEntityById(int id){
+        Optional<SiteEntity> optional = siteEntityRepository.findById(id);
+        return optional.orElse(null);
     }
 
     @GetMapping("/sites/isIndexing")
