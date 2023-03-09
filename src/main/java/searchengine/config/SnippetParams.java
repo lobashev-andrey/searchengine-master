@@ -9,8 +9,6 @@ import org.springframework.stereotype.Component;
 @Setter
 @Component
 @ConfigurationProperties(prefix = "indexing-settings")
-public class ConnectionConfig {
-    private String userAgent;
+public class SnippetParams {
     private String referer;
-
 }

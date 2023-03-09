@@ -21,9 +21,6 @@ import java.util.Random;
 @Service
 @RequiredArgsConstructor
 public class StatisticsServiceImpl implements StatisticsService {
-
-//    private final Random random = new Random();
-//    private final SitesList sites;
     private final SiteEntityController siteEntityController;
     private final PageEntityController pageEntityController;
     private final LemmaController lemmaController;

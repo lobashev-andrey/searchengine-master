@@ -1,22 +1,23 @@
 package searchengine.services;
 
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import org.apache.lucene.morphology.LuceneMorphology;
 import org.apache.lucene.morphology.russian.RussianLuceneMorphology;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.safety.Safelist;
+import searchengine.config.SnippetParams;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+@Getter
 public class TextLemmasParser {
-
-
+//    private final SnippetParams snippetParams;
 
     public String htmlTagsRemover(String text){
         Pattern p = Pattern.compile("<script.+?/script>|<.+?>");
@@ -31,7 +32,7 @@ public class TextLemmasParser {
 
         Pattern p = Pattern.compile("[а-яё-]+");
         Matcher m = p.matcher(text.toLowerCase());
-        ArrayList<String> words = new ArrayList<>();
+//        ArrayList<String> words = new ArrayList<>();
         while(m.find()){
             String word = m.group();
             List<String> wordBaseForms = luceneMorph.getMorphInfo(word);
@@ -52,7 +53,6 @@ public class TextLemmasParser {
         HashMap<Integer, String> indexToLemma = new HashMap<>();
         Pattern p = Pattern.compile("[а-яё-]+");
         Matcher m = p.matcher(text.toLowerCase());
-        ArrayList<String> words = new ArrayList<>();
         while(m.find()){
             String word = m.group();
             Integer index = m.start();
@@ -63,23 +63,23 @@ public class TextLemmasParser {
                 }
             }
         }
-        int fragmentStart = 0;
+        int fragLength = 230;
+        HashMap<Integer, Integer> indexToNumberOfLemmas = new HashMap<>();
         for(Integer i : indexToLemma.keySet()){
-
-            int DELTA = 300;
             int count = 0;
             for(String lemma : lemmas){
                 if(indexToLemma.entrySet().stream().anyMatch
-                        (a -> (a.getKey() >= i && a.getKey() < i + DELTA && a.getValue().equals(lemma))))
+                        (a -> (a.getKey() >= i && a.getKey() < i + fragLength && a.getValue().equals(lemma))))
                 {
                     count++;
                 }
             }
-            if(count == lemmas.size()){
-                fragmentStart = i;
-                return text.substring(fragmentStart, fragmentStart + 300);
-            }
-
+            indexToNumberOfLemmas.put(i, count);
+            Integer best = indexToNumberOfLemmas.keySet().stream()
+                    .sorted(Comparator.comparing(indexToNumberOfLemmas::get)
+                            .reversed()).collect(Collectors.toList()).get(0);
+            return text.substring(best,
+                    Math.min((best + fragLength), text.length()));
         }
         return "";
     }
@@ -88,10 +88,43 @@ public class TextLemmasParser {
         Document doc = Jsoup.parse( htmlText );
         doc.outputSettings().charset("UTF-8");
         htmlText = Jsoup.clean( doc.body().html(), Safelist.simpleText());
-        return htmlText;
+        Pattern p = Pattern.compile("<.+?>");
+        Matcher m = p.matcher(htmlText);
+        return m.replaceAll("");
     }
 
+    public String boldTagAdder(String rawFragment, List<String> lemmas){
+        rawFragment = " " + rawFragment + " ";
+        LuceneMorphology luceneMorph = null;
+        try {
+            luceneMorph = new RussianLuceneMorphology();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        Pattern p = Pattern.compile("[а-яё-]+");
+        Matcher m = p.matcher(rawFragment.toLowerCase());
 
+        // КАК-ТО НАДО СДЕЛАТЬ ВЫДЕЛЕНИЕ <b></b>
+        StringBuilder builder = new StringBuilder();
+        int afterWord = 0;
+        while(m.find()){
+            String lowCaseWord = m.group();
+            int index = m.start();
+            builder.append(rawFragment.substring(afterWord, index));  // Добавили то, что с начала или после предыдущего слова
+            List<String> wordBaseForms = luceneMorph.getMorphInfo(lowCaseWord);
+            String originalWord = rawFragment.substring(index, index + lowCaseWord.length());
+            boolean containsLemma = false;
+            for(String s : wordBaseForms){
+                if (lemmas.contains(s.substring(0, s.indexOf("|")))) {
+                    containsLemma = true;
+                    break;
+                }
+            }
+            builder.append(containsLemma ? "<b>" + originalWord + "</b>" : originalWord);
+            afterWord = index + lowCaseWord.length();
+        }
+        return "*** " + builder.toString();
+    }
 
 
 }

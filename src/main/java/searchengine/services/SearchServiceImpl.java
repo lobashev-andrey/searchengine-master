@@ -6,19 +6,18 @@ import org.jsoup.nodes.Document;
 import org.jsoup.safety.Safelist;
 import org.jsoup.select.Elements;
 import org.springframework.stereotype.Service;
-import searchengine.config.ConnectionConfig;
 import searchengine.controllers.IndexController;
 import searchengine.controllers.LemmaController;
 import searchengine.controllers.PageEntityController;
-import searchengine.controllers.SiteEntityController;
-import searchengine.dto.indexing.IndexingResponse;
 import searchengine.dto.search.SearchResponse;
+import searchengine.dto.search.SearchResponseFalse;
 import searchengine.dto.search.SearchResponseTrue;
 import searchengine.dto.search.SinglePageSearchData;
+import searchengine.exceptions.EmptyQueryException;
+import searchengine.exceptions.WrongQueryFormatException;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
 
-import javax.print.Doc;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -35,30 +34,47 @@ public class SearchServiceImpl implements SearchService{
 
     @Override
     public SearchResponse getSearch(String query, String site, int offset, int limit) {
-        List<String> order = getOrderedListOfRareLemmas(query);
+
+        List<String> lemmas;
+        List<String> order;
         List<Integer> pagesToReduce = new ArrayList<>();
         Set<Integer> lemmaIdsForRank = new HashSet<>();
+        Map<Integer, Float> pageAndRank;
 
-        int flag = 0;
-        for(String lemmaName : order){
-            List<Integer> currentList = new ArrayList<>();
-            List<Integer> lemmaIds = lemmaController.getLemmaIdsByLemmaName(lemmaName);
-            lemmaIdsForRank.addAll(lemmaIds); // Сюда собираем lemma_id's от всех лемм, чтобы потом считать их sumRank на страницах
-            Integer[] lemmaIdsArray = lemmaIds.toArray(new Integer[0]); // НЕ ОБРАЩАТЬ ВНИМАНИЯ НА ВЫДЕЛЕНИЕ
-            List<Integer> pageIds = indexController.getPageIdsByLemmaIds(lemmaIdsArray);  // Нашли страницы, где оно есть
-
-            for(Integer p : pageIds){
-                if(flag == 0){
-                    pagesToReduce.add(p); // Первый раз наполняем оба, пересечение будет полным
-                }
-                currentList.add(p); // Теперь только меньший - и будем получать пересечение
+        try{
+            lemmas = queryToLemmaList(query);
+            if(query.length() == 0){
+                throw new EmptyQueryException("Задан пустой поисковый запрос");
             }
-            pagesToReduce = intersectionList(pagesToReduce, currentList);
-            flag++;
+            order = getOrderedListOfRareLemmas(lemmas);
+            if(order.size() == 0){
+                throw new WrongQueryFormatException("В запросе отсутствуют слова из русского словаря");
+            }
+
+            int flag = 0;
+            for(String lemmaName : order){
+                List<Integer> currentList = new ArrayList<>();
+                List<Integer> lemmaIds = lemmaController.getLemmaIdsByLemmaName(lemmaName);
+                lemmaIdsForRank.addAll(lemmaIds); // Сюда собираем lemma_id's от всех лемм, чтобы потом считать их sumRank на страницах
+                Integer[] lemmaIdsArray = lemmaIds.toArray(new Integer[0]); // НЕ ОБРАЩАТЬ ВНИМАНИЯ НА ВЫДЕЛЕНИЕ
+                List<Integer> pageIds = indexController.getPageIdsByLemmaIds(lemmaIdsArray);  // Нашли страницы, где оно есть
+
+                for(Integer p : pageIds){
+                    currentList.add(p);
+                    if(flag == 0) pagesToReduce.add(p); // Первый раз наполняем оба, пересечение будет полным
+                }
+                pagesToReduce = intersectionList(pagesToReduce, currentList);
+                flag++;
+            }
+            pageAndRank = getPagesAndRanks(lemmaIdsForRank, pagesToReduce);
+        } catch (Exception ex) {
+            return new SearchResponseFalse(ex.getMessage());
         }
-        Map<Integer, Float> pageAndRank = getPagesAndRanks(lemmaIdsForRank, pagesToReduce);
-        return responseManager(pageAndRank, order);
+
+        return responseManager(pageAndRank, order, lemmas);
     }
+
+
     public Map<String, Integer> deleteTooCommonLemmas(Map<String, Integer> map){
         Integer minValue = map.values().stream().min(Comparator.naturalOrder()).orElse(0);
         int noMoreThan = Math.max(
@@ -79,13 +95,16 @@ public class SearchServiceImpl implements SearchService{
         }
         return list;
     }
-    public List<String> getOrderedListOfRareLemmas(String query){
+    public List<String> queryToLemmaList(String query){
         List<String> lemmas;
         try {
             lemmas = new ArrayList<>(parser.lemmasCounter(query).keySet());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+        return lemmas;
+    }
+    public List<String> getOrderedListOfRareLemmas(List<String> lemmas){
         Map<String, Integer> lemmaToAmountOfPages = new HashMap<>();
         for(String lemma : lemmas){
             Integer numPages = lemmaController.getSumFrequency(lemma);
@@ -112,8 +131,7 @@ public class SearchServiceImpl implements SearchService{
         }
         return pageAndRank;
     }
-
-    public SearchResponse responseManager(Map<Integer, Float> pageAndRank, List<String> order){
+    public SearchResponse responseManager(Map<Integer, Float> pageAndRank, List<String> order, List<String> lemmas){
         SearchResponseTrue searchResponse = new SearchResponseTrue();
         searchResponse.setResult(true);
         searchResponse.setCount(pageAndRank.size());
@@ -145,11 +163,8 @@ public class SearchServiceImpl implements SearchService{
             pageData.setTitle(title);
             pageData.setRelevance(pageAndRank.get(f));
             //     snippet
-            pageData.setSnippet(snippetMaker(order, doc));
-            System.out.println(
-                    snippetMaker(order, doc) //////////////////////////////////
-            );
-
+            String snippet = snippetMaker(doc, order, lemmas);
+            pageData.setSnippet(snippet);
 
             totalData.add(pageData);
         }
@@ -157,18 +172,18 @@ public class SearchServiceImpl implements SearchService{
 
         return searchResponse;
     }
-    public String snippetMaker(List<String> order, Document doc){
-
-        String pageText = getTextOnlyFromHtmlText(doc.html()); //ИЛИ
+    public String snippetMaker(Document doc, List<String> order, List<String> lemmas){
+        String pageText = getTextOnlyFromHtmlText(doc.html());
+        String rawFragment = "";
         try {
-            return parser.getFragmentWithAllLemmas(pageText, order);
+            rawFragment =  parser.getFragmentWithAllLemmas(pageText, order);
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return null;
+        String boldedFragment = parser.boldTagAdder(rawFragment, lemmas);
+        return boldedFragment;
     }
-
-    public static String getTextOnlyFromHtmlText(String htmlText){
+    public String getTextOnlyFromHtmlText(String htmlText){
         Document doc = Jsoup.parse( htmlText );
         doc.outputSettings().charset("UTF-8");
         htmlText = Jsoup.clean( doc.body().html(), Safelist.simpleText());
