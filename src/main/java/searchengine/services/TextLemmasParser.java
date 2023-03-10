@@ -55,7 +55,7 @@ public class TextLemmasParser {
         Matcher m = p.matcher(text.toLowerCase());
         while(m.find()){
             String word = m.group();
-            Integer index = m.start();
+            Integer index = m.start();  // Тут можно не Integer, а Float и в цикле добавлять по 0,1, чтобы взять все леммы слова
             List<String> wordBaseForms = luceneMorph.getMorphInfo(word);
             for(String s : wordBaseForms){
                 if(lemmas.contains(s.substring(0, s.indexOf("|")))){
@@ -65,23 +65,22 @@ public class TextLemmasParser {
         }
         int fragLength = 230;
         HashMap<Integer, Integer> indexToNumberOfLemmas = new HashMap<>();
-        for(Integer i : indexToLemma.keySet()){
+        for(Integer i : indexToLemma.keySet()){  // А тут, соответственно, для каждого i брать отрезок от i/1 до (i + frL)/1 + 0,5
             int count = 0;
             for(String lemma : lemmas){
                 if(indexToLemma.entrySet().stream().anyMatch
-                        (a -> (a.getKey() >= i && a.getKey() < i + fragLength && a.getValue().equals(lemma))))
+                        (a -> (a.getKey() >= i && a.getKey() < (i + fragLength) && a.getValue().equals(lemma))))
                 {
                     count++;
                 }
             }
             indexToNumberOfLemmas.put(i, count);
-            Integer best = indexToNumberOfLemmas.keySet().stream()
-                    .sorted(Comparator.comparing(indexToNumberOfLemmas::get)
-                            .reversed()).collect(Collectors.toList()).get(0);
-            return text.substring(best,
-                    Math.min((best + fragLength), text.length()));
         }
-        return "";
+        Integer best = indexToNumberOfLemmas.keySet().stream()
+                .sorted(Comparator.comparing(indexToNumberOfLemmas::get)
+                        .reversed()).collect(Collectors.toList()).get(0);
+        return text.substring(best,
+                Math.min((best + fragLength), text.length()));
     }
 
     public static String getTextOnlyFromHtmlText(String htmlText){

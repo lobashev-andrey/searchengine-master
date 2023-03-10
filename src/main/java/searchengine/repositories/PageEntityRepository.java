@@ -31,6 +31,9 @@ public interface PageEntityRepository extends CrudRepository<PageEntity, Integer
     @Query(value = "SELECT * from pages where `site_id` = :site_id AND `path` = :currentUrl", nativeQuery = true)
     PageEntity findBySiteIdAndPath(int site_id, String currentUrl);
 
+    @Query(value = "SELECT id FROM pages WHERE site_id = :site_id", nativeQuery = true)
+    Iterable<Integer> getPagesBySiteId(int site_id);
+
 
 
 

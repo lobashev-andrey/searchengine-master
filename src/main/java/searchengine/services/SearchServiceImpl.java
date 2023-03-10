@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import searchengine.controllers.IndexController;
 import searchengine.controllers.LemmaController;
 import searchengine.controllers.PageEntityController;
+import searchengine.controllers.SiteEntityController;
 import searchengine.dto.search.SearchResponse;
 import searchengine.dto.search.SearchResponseFalse;
 import searchengine.dto.search.SearchResponseTrue;
@@ -27,6 +28,7 @@ import java.util.stream.Collectors;
 public class SearchServiceImpl implements SearchService{
     private final LemmaController lemmaController;
     private final PageEntityController pageEntityController;
+    private final SiteEntityController siteEntityController;
     private final IndexController indexController;
     private final TextLemmasParser parser = new TextLemmasParser();
     private final int threshold = 70;
@@ -34,6 +36,7 @@ public class SearchServiceImpl implements SearchService{
 
     @Override
     public SearchResponse getSearch(String query, String site, int offset, int limit) {
+
 
         List<String> lemmas;
         List<String> order;
@@ -57,7 +60,12 @@ public class SearchServiceImpl implements SearchService{
                 List<Integer> lemmaIds = lemmaController.getLemmaIdsByLemmaName(lemmaName);
                 lemmaIdsForRank.addAll(lemmaIds); // Сюда собираем lemma_id's от всех лемм, чтобы потом считать их sumRank на страницах
                 Integer[] lemmaIdsArray = lemmaIds.toArray(new Integer[0]); // НЕ ОБРАЩАТЬ ВНИМАНИЯ НА ВЫДЕЛЕНИЕ
-                List<Integer> pageIds = indexController.getPageIdsByLemmaIds(lemmaIdsArray);  // Нашли страницы, где оно есть
+
+                List<Integer> pageIds = indexController.getPageIdsByLemmaIds(lemmaIdsArray);  // Для всех сайтов Нашли страницы, где оно есть
+                if(!site.equals("All sites")){
+                    SiteEntity siteEntity = siteEntityController.getSiteEntityByUrl(site);
+                    pageIds = intersectionList(pageIds, pageEntityController.getPagesBySiteId(siteEntity.getId())); // Это если один сайт
+                }
 
                 for(Integer p : pageIds){
                     currentList.add(p);
@@ -71,10 +79,8 @@ public class SearchServiceImpl implements SearchService{
             return new SearchResponseFalse(ex.getMessage());
         }
 
-        return responseManager(pageAndRank, order, lemmas);
+        return responseManager(pageAndRank, lemmas, limit);
     }
-
-
     public Map<String, Integer> deleteTooCommonLemmas(Map<String, Integer> map){
         Integer minValue = map.values().stream().min(Comparator.naturalOrder()).orElse(0);
         int noMoreThan = Math.max(
@@ -131,7 +137,7 @@ public class SearchServiceImpl implements SearchService{
         }
         return pageAndRank;
     }
-    public SearchResponse responseManager(Map<Integer, Float> pageAndRank, List<String> order, List<String> lemmas){
+    public SearchResponse responseManager(Map<Integer, Float> pageAndRank, List<String> lemmas, int limit){
         SearchResponseTrue searchResponse = new SearchResponseTrue();
         searchResponse.setResult(true);
         searchResponse.setCount(pageAndRank.size());
@@ -141,7 +147,12 @@ public class SearchServiceImpl implements SearchService{
                 .sorted(Comparator.comparing(pageAndRank::get)
                         .reversed()).collect(Collectors.toList());
 
+        int count = 0;
         for(Integer f : finalOrderOfPages){
+//            if(count !=0 && count % limit == 0){
+//                break;
+//            }
+
             System.out.println("Страница " + f + " и ее relRank: " + pageAndRank.get(f));
             SinglePageSearchData pageData = new SinglePageSearchData();
             PageEntity currentPage = pageEntityController.getPageEntityById(f);
@@ -150,7 +161,6 @@ public class SearchServiceImpl implements SearchService{
             pageData.setSite(baseUrl); // УБРАТЬ слэш
             pageData.setSiteName(currentSite.getName());
             pageData.setUri(currentPage.getPath());
-
 
             Document doc = null;
             try {
@@ -163,25 +173,25 @@ public class SearchServiceImpl implements SearchService{
             pageData.setTitle(title);
             pageData.setRelevance(pageAndRank.get(f));
             //     snippet
-            String snippet = snippetMaker(doc, order, lemmas);
+            String snippet = snippetMaker(doc, lemmas);
             pageData.setSnippet(snippet);
 
             totalData.add(pageData);
+//            count++;
         }
         searchResponse.setData(totalData);
 
         return searchResponse;
     }
-    public String snippetMaker(Document doc, List<String> order, List<String> lemmas){
+    public String snippetMaker(Document doc, List<String> lemmas){
         String pageText = getTextOnlyFromHtmlText(doc.html());
         String rawFragment = "";
         try {
-            rawFragment =  parser.getFragmentWithAllLemmas(pageText, order);
+            rawFragment =  parser.getFragmentWithAllLemmas(pageText, lemmas); // Поставил lemmas вместо order
         } catch (IOException e) {
             e.printStackTrace();
         }
-        String boldedFragment = parser.boldTagAdder(rawFragment, lemmas);
-        return boldedFragment;
+        return parser.boldTagAdder(rawFragment, lemmas);
     }
     public String getTextOnlyFromHtmlText(String htmlText){
         Document doc = Jsoup.parse( htmlText );
