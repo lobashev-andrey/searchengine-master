@@ -15,9 +15,11 @@ import searchengine.dto.search.SearchResponseFalse;
 import searchengine.dto.search.SearchResponseTrue;
 import searchengine.dto.search.SinglePageSearchData;
 import searchengine.exceptions.EmptyQueryException;
+import searchengine.exceptions.NotIndexedException;
 import searchengine.exceptions.WrongQueryFormatException;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
+import searchengine.model.Status;
 
 import java.io.IOException;
 import java.util.*;
@@ -36,49 +38,25 @@ public class SearchServiceImpl implements SearchService{
 
     @Override
     public SearchResponse getSearch(String query, String site, int offset, int limit) {
-
-
         List<String> lemmas;
         List<String> order;
-        List<Integer> pagesToReduce = new ArrayList<>();
-        Set<Integer> lemmaIdsForRank = new HashSet<>();
         Map<Integer, Float> pageAndRank;
 
         try{
-            lemmas = queryToLemmaList(query);
             if(query.length() == 0){
                 throw new EmptyQueryException("Задан пустой поисковый запрос");
             }
+            lemmas = queryToLemmaList(query);
             order = getOrderedListOfRareLemmas(lemmas);
             if(order.size() == 0){
                 throw new WrongQueryFormatException("В запросе отсутствуют слова из русского словаря");
             }
-
-            int flag = 0;
-            for(String lemmaName : order){
-                List<Integer> currentList = new ArrayList<>();
-                List<Integer> lemmaIds = lemmaController.getLemmaIdsByLemmaName(lemmaName);
-                lemmaIdsForRank.addAll(lemmaIds); // Сюда собираем lemma_id's от всех лемм, чтобы потом считать их sumRank на страницах
-                Integer[] lemmaIdsArray = lemmaIds.toArray(new Integer[0]); // НЕ ОБРАЩАТЬ ВНИМАНИЯ НА ВЫДЕЛЕНИЕ
-
-                List<Integer> pageIds = indexController.getPageIdsByLemmaIds(lemmaIdsArray);  // Для всех сайтов Нашли страницы, где оно есть
-                if(!site.equals("All sites")){
-                    SiteEntity siteEntity = siteEntityController.getSiteEntityByUrl(site);
-                    pageIds = intersectionList(pageIds, pageEntityController.getPagesBySiteId(siteEntity.getId())); // Это если один сайт
-                }
-
-                for(Integer p : pageIds){
-                    currentList.add(p);
-                    if(flag == 0) pagesToReduce.add(p); // Первый раз наполняем оба, пересечение будет полным
-                }
-                pagesToReduce = intersectionList(pagesToReduce, currentList);
-                flag++;
-            }
-            pageAndRank = getPagesAndRanks(lemmaIdsForRank, pagesToReduce);
+            Integer[] sites_ids = getSitesWhereToSearch(site);
+            pageAndRank = rankPages(order, sites_ids);
         } catch (Exception ex) {
             return new SearchResponseFalse(ex.getMessage());
         }
-
+//        pageAndRank.keySet().forEach(System.out::println);
         return responseManager(pageAndRank, lemmas, limit);
     }
     public Map<String, Integer> deleteTooCommonLemmas(Map<String, Integer> map){
@@ -198,6 +176,51 @@ public class SearchServiceImpl implements SearchService{
         doc.outputSettings().charset("UTF-8");
         htmlText = Jsoup.clean( doc.body().html(), Safelist.simpleText());
         return htmlText;
+    }
+
+    public Integer[] getSitesWhereToSearch(String site) throws NotIndexedException {
+        // Это должны быть проиндексированные сайты, по которым надо искать
+        List<SiteEntity> whereSearch = new ArrayList<>();
+        if(!site.equals("All sites")) {
+            whereSearch.add(siteEntityController.getSiteEntityByUrl(site));
+        } else {
+            whereSearch.addAll(siteEntityController.list());
+        }
+        whereSearch = whereSearch.stream().filter(a->a.getStatus().equals(Status.INDEXED)).collect(Collectors.toList());
+        if(whereSearch.size() == 0){
+            throw new NotIndexedException("Указанного сайта(ов) нет в списке проиндексированных");
+        }
+        return whereSearch.stream().map(SiteEntity::getId).toArray(Integer[]::new);
+    }
+
+    public Map<Integer, Float> rankPages(List<String> order, Integer[] sites_ids){
+        List<Integer> reducingListOfPages = new ArrayList<>();
+        Set<Integer> lemmaIdsForRank = new HashSet<>();
+        int flag = 0;
+        for(String lemmaName : order){
+            List<Integer> pagesOfCurrentLemma = new ArrayList<>();
+
+            List<Integer> lemmaIds = lemmaController.getLemmaIdsByLemmaName(lemmaName, sites_ids); // получили по имени и сайтам lemma_ids
+            System.out.println("Lemma " + lemmaName);
+            for(Integer i : sites_ids){
+                System.out.println("site_id: " + i);////////////////////////////////
+            }
+            System.out.println(lemmaIds.size());
+
+
+            lemmaIdsForRank.addAll(lemmaIds); // Сюда собираем lemma_id's от всех лемм, чтобы потом считать их sumRank на страницах
+            Integer[] lemmaIdsArray = lemmaIds.toArray(new Integer[0]); // НЕ ОБРАЩАТЬ ВНИМАНИЯ НА ВЫДЕЛЕНИЕ
+
+            List<Integer> pageIds = indexController.getPageIdsByLemmaIds(lemmaIdsArray); // Нашли, на каких страницах есть эта лемма
+
+            for(Integer p : pageIds){
+                pagesOfCurrentLemma.add(p);
+                if(flag == 0) reducingListOfPages.add(p); // Первый раз наполняем оба, пересечение будет полным
+            }
+            reducingListOfPages = intersectionList(reducingListOfPages, pagesOfCurrentLemma);
+            flag++;
+        }
+        return getPagesAndRanks(lemmaIdsForRank, reducingListOfPages);
     }
 
 }

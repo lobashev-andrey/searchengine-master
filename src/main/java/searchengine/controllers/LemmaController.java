@@ -9,18 +9,19 @@ import searchengine.repositories.LemmaRepository;
 import java.util.*;
 
 @Controller
+@RequestMapping("/lemmas")
 public class LemmaController {
 
     @Autowired
     LemmaRepository lemmaRepository;
 
-    @GetMapping("/lemmas")
+    @GetMapping("/")
     public Integer getLemmaId(int site_id, String lemma){
         Optional<Integer> optional = lemmaRepository.getLemmaId(site_id, lemma);
         return optional.orElse(null);
     }
 
-    @GetMapping("/lemmas/{id}")
+    @GetMapping("/{id}")
     public int countLemmaBySiteId(@PathVariable int id){
         return lemmaRepository.countLemmaBySiteId(id);
     }
@@ -31,10 +32,10 @@ public class LemmaController {
         return optional.orElse(null);
     }
 
-    @GetMapping("/lemmas/{lemmaName}")
-    public List<Integer> getLemmaIdsByLemmaName(@PathVariable String lemmaName){
+    @GetMapping("/{lemmaName}")
+    public List<Integer> getLemmaIdsByLemmaName(@PathVariable String lemmaName, Integer[] sites_ids){
         List<Integer> list = new ArrayList<>();
-        Iterable<Integer> iterable = lemmaRepository.getLemmaIdsByLemmaName(lemmaName);
+        Iterable<Integer> iterable = lemmaRepository.getLemmaIdsByLemmaName(lemmaName, sites_ids);
         iterable.forEach(list::add);
         return list;
     }
@@ -42,7 +43,7 @@ public class LemmaController {
 
 
 
-    @PutMapping("/lemmas")
+    @PutMapping("/")
     public void increaseFrequency(int id){
         Optional<LemmaEntity> optional = lemmaRepository.findById(id);
         if(optional.isPresent()){
@@ -51,7 +52,7 @@ public class LemmaController {
             lemmaRepository.save(lem);
         }
     }
-    @PostMapping("/lemmas/{id}")
+    @PostMapping("/{id}")
     public void decreaseFrequency(@PathVariable int id){
         Optional<LemmaEntity> optional = lemmaRepository.findById(id);
         if(optional.isPresent()){
@@ -61,13 +62,13 @@ public class LemmaController {
         }
     }
 
-    @PostMapping("/lemmas")
+    @PostMapping("/")
     public int addLemma(LemmaEntity lemmaEntity){
         lemmaRepository.save(lemmaEntity);
         return lemmaEntity.getId();
     }
 
-    @DeleteMapping("/lemmas")
+    @DeleteMapping("/")
     public void deleteBySiteId(int site_id){
         Iterable<Integer> iterable = lemmaRepository.getLemmaIdBySiteId(site_id);
         lemmaRepository.deleteAllById(iterable);

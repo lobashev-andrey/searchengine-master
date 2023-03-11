@@ -39,7 +39,7 @@ public class IndexingServiceImpl implements IndexingService{
     @Override
     public IndexingResponse getIndexing() {
         synchronized (siteEntityController){
-            if(siteEntityController.isIndexing()){
+            if(siteEntityController.isIndexing() && !stopper.isStop()){
                 return new IndexingResponseFalse("Индексация уже запущена");
             }
             stopper.setStop(false);
@@ -89,9 +89,10 @@ public class IndexingServiceImpl implements IndexingService{
     public void newSitePagesAdder(SiteEntity newSite) {
         List<String> result = new ArrayList<>();
         Set<String> total = new HashSet<>();
-        result.add(newSite.getUrl());
-        total.add(newSite.getUrl());
-        result.addAll(new ForkJoinPool().invoke(new RecursiveIndexer(newSite.getUrl(), newSite.getUrl(), total, stopper)));
+        String baseUrl = newSite.getUrl();
+        result.add(baseUrl);
+        total.add(baseUrl);
+        result.addAll(new ForkJoinPool().invoke(new RecursiveIndexer(baseUrl, baseUrl, total, stopper)));
 
         long start = System.currentTimeMillis();   ////////////////////////
 
@@ -103,17 +104,13 @@ public class IndexingServiceImpl implements IndexingService{
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            pageAdder(r, newSite);
+            pageAdder(r, baseUrl, newSite);
             siteEntityController.refreshSiteEntity(newSite.getId());
-
-            System.out.println("***************************************************");
-            System.out.println("***************************************************");
-            System.out.println("***************************************************");
-            System.out.println(System.currentTimeMillis() - start);
-
-
         }
-
+        System.out.println("***************************************************");
+        System.out.println("***************************************************");
+        System.out.println("***************************************************");
+        System.out.println(System.currentTimeMillis() - start);
     }
     // Старый pageAdder - на всякий случай
 //    public void pageAdder(String path, SiteEntity newSite){
@@ -154,11 +151,19 @@ public class IndexingServiceImpl implements IndexingService{
 //        pageEntityController.addPageEntity(newPage);
 //    }  //
 
-    public void pageAdder(String url, SiteEntity newSite){
+    public void pageAdder(String url, String baseUrl, SiteEntity newSite){
+
+        System.out.println("url" + url);///////////////
+
         Connection.Response response = getResponse(url);
+
+        System.out.println("response " + response);
         Document doc = null;
         int status_code;
-        if(response == null) return;
+        if(response == null){
+            System.out.println("RESPONSE == NULL");
+            return;
+        }
         status_code = response.statusCode();
 
         try {

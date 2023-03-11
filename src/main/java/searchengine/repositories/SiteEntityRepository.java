@@ -15,6 +15,9 @@ public interface SiteEntityRepository extends CrudRepository<SiteEntity, Integer
     @Query(value = "SELECT `id` from sites where `status` = 'INDEXING'", nativeQuery = true)
     int[] listOfIndexing();
 
+    @Query(value = "SELECT 'id' FROM sites WHERE 'status' = 'INDEXED'", nativeQuery = true)
+    int[] listOfIndexed();
+
 
 
 

@@ -13,19 +13,20 @@ import java.util.List;
 import java.util.Optional;
 
 @Controller
+@RequestMapping("/sites")
 public class SiteEntityController {
     @Autowired
     private SiteEntityRepository siteEntityRepository;
 
-    @PostMapping("/sites")
+//    @PostMapping("/")
     public void addSiteEntity(SiteEntity siteEntity){
         siteEntityRepository.save(siteEntity);
     }
-    @DeleteMapping("/sites")
+//    @DeleteMapping("/")
     public void deleteSiteEntity(SiteEntity siteEntity){
         siteEntityRepository.delete(siteEntity);
     }
-    @GetMapping("/sites/{url}")
+    @GetMapping("/{url}")
     public SiteEntity getSiteEntityByUrl(@PathVariable String url){
         Iterable<SiteEntity> allSites = siteEntityRepository.findAll();
         for(SiteEntity se : allSites){
@@ -36,7 +37,7 @@ public class SiteEntityController {
         return null;
     }
 
-    @GetMapping("/sites")
+//    @GetMapping("/")
     public List<SiteEntity> list(){
         Iterable<SiteEntity> iterable = siteEntityRepository.findAll();
         List<SiteEntity> siteEntities = new ArrayList<>();
@@ -44,23 +45,23 @@ public class SiteEntityController {
         return siteEntities;
     }
 
-    @GetMapping("/sites/{id}")
+    @GetMapping("/{id}")
     public SiteEntity getSiteEntityById(int id){
         Optional<SiteEntity> optional = siteEntityRepository.findById(id);
         return optional.orElse(null);
     }
 
-    @GetMapping("/sites/isIndexing")
+    @GetMapping("/isIndexing")
     public boolean isIndexing(){
         return siteEntityRepository.countIndexing() > 0;
     }
 
-    @GetMapping("/sites/whichAreIndexing")
+    @GetMapping("/whichAreIndexing")
     public int[] listOfIndexing(){
         return siteEntityRepository.listOfIndexing();
     }
 
-    @PutMapping("/sites")
+//    @PutMapping("/")
     public void refreshSiteEntity(int id){
         Optional<SiteEntity> optional = siteEntityRepository.findById(id);
         if(optional.isPresent()) {
@@ -69,7 +70,7 @@ public class SiteEntityController {
             siteEntityRepository.save(sE);
         }
     }
-    @PutMapping("/sites/{id}")
+    @PutMapping("/{id}")
     public void setStatus(@PathVariable int id, Status status ){
         Optional<SiteEntity> optional = siteEntityRepository.findById(id);
         if(optional.isPresent()){
@@ -79,7 +80,7 @@ public class SiteEntityController {
             siteEntityRepository.save(sE);
         }
     }
-    @PutMapping("/sites/{id}/{lastError}")
+    @PutMapping("/{id}/{lastError}")
     public void setError(@PathVariable int id, @PathVariable String lastError ) {
         Optional<SiteEntity> optional = siteEntityRepository.findById(id);
         if (optional.isPresent()) {

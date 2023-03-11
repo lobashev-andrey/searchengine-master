@@ -8,9 +8,8 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.time.LocalDate;
+import java.util.*;
 import java.util.concurrent.RecursiveTask;
 
 @AllArgsConstructor
@@ -25,16 +24,19 @@ public class RecursiveIndexer extends RecursiveTask<List<String>> {
     protected List compute() {
         List<RecursiveIndexer> pageConstructors = new ArrayList<>(); // Создаем список задач
         List<String> children = new ArrayList<>();
+        int limitYear = LocalDate.now().getYear() + 3;
 
         if(stopper.isStop()){
-            System.out.println("ST___________OOOOOOOOOOOOOO____________________P");
             return new ArrayList<>();
         }
+
+        System.out.println("ADDRESS " + address);
 
         try {
             Document doc = Jsoup.connect(address).get();
             Elements elements = doc.select("a");
             for(Element el : elements){
+                if(el.hasAttr("onclick")){continue;}
                 String child = el.attr("abs:href");
                 if(!child.startsWith(baseUrl) || child.contains("#") || child.contains(".pdf")|| child.contains(".jpeg")  || child.contains(".jpg") || child.contains(".png") || child.contains(".mp4") || child.contains(".docx") || child.contains(".doc") || child.contains(".xls") || child.contains(".pptx") || child.contains("?http") || child.contains("\\")) {
                     continue;
@@ -65,7 +67,6 @@ public class RecursiveIndexer extends RecursiveTask<List<String>> {
             children.addAll(task.join());    // Добавляем результаты каждого ребенка
         }
         if(stopper.isStop()){
-            System.out.println("STOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOoooP");
             return new ArrayList<>();
         }
 

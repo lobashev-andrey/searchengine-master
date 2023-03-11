@@ -26,19 +26,19 @@ indexing-settings:
 #      name: SomeStr
 #    - url: http://radiomv.ru/
 #      name: RadioMV
-    - url: https://ipfran.ru/
-      name: ИПФРАН
-    - url: https://nikoartgallery.com/
+#    - url: https://ipfran.ru/
+#      name: ИПФРАН
+    - url: https://nikoartgallery.com/news/all
       name: Niko art gallery
-    - url: https://et-cetera.ru/mobile/
-      name: Театр «Et Cetera»
+#    - url: https://et-cetera.ru/mobile/
+#      name: Театр «Et Cetera»
 
     #    - url: https://dimonvideo.ru/
 #      name: ДомВидео
 #    - url: https://apn-p.ru/publication
 #      name: APN-P.ru
-    - url: https://www.dextra.ru/services/
-      name: Декстра
+#    - url: https://www.dextra.ru/services/
+#      name: Декстра
 
 
   userAgent:

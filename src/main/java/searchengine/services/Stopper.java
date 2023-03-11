@@ -7,5 +7,5 @@ import lombok.Setter;
 @Getter
 @Setter
 public class Stopper {
-    private volatile boolean stop;
+    private volatile boolean stop = true;
 }
