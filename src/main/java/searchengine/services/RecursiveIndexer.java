@@ -24,14 +24,9 @@ public class RecursiveIndexer extends RecursiveTask<List<String>> {
     protected List compute() {
         List<RecursiveIndexer> pageConstructors = new ArrayList<>(); // Создаем список задач
         List<String> children = new ArrayList<>();
-        int limitYear = LocalDate.now().getYear() + 3;
-
         if(stopper.isStop()){
             return new ArrayList<>();
         }
-
-        System.out.println("ADDRESS " + address);
-
         try {
             Document doc = Jsoup.connect(address).get();
             Elements elements = doc.select("a");

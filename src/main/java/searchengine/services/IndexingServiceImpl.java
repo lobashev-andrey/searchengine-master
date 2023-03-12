@@ -29,9 +29,8 @@ public class IndexingServiceImpl implements IndexingService{
     private final PageEntityController pageEntityController;
     private final LemmaController lemmaController;
     private final IndexController indexController;
-
-    private final ConnectionConfig userAgent;
-    private final ConnectionConfig referer;
+    private final ConnectionConfig connectionConfig;
+//    private final ConnectionConfig referer;
     private final Stopper stopper = new Stopper();
 
 
@@ -55,7 +54,7 @@ public class IndexingServiceImpl implements IndexingService{
             });
             thread.start();
         }
-        stopIndexing(); // Нуждается в проверке - вырубит ли кнопку?????
+        stopIndexing();
         return new IndexingResponseTrue();
     }
 
@@ -94,23 +93,19 @@ public class IndexingServiceImpl implements IndexingService{
         total.add(baseUrl);
         result.addAll(new ForkJoinPool().invoke(new RecursiveIndexer(baseUrl, baseUrl, total, stopper)));
 
-        long start = System.currentTimeMillis();   ////////////////////////
-
         for (String r : result) {
             if(stopper.isStop()){break;}
-            long time = Math.round(100 + 50 * Math.random());
-            try {
-                Thread.sleep(time);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
             pageAdder(r, baseUrl, newSite);
+//            String message = pageAdder(r, baseUrl, newSite);
+//            siteEntityController.setError(newSite.getId(), message);
             siteEntityController.refreshSiteEntity(newSite.getId());
         }
-        System.out.println("***************************************************");
-        System.out.println("***************************************************");
-        System.out.println("***************************************************");
-        System.out.println(System.currentTimeMillis() - start);
+        long time = Math.round(100 + 50 * Math.random());
+        try {
+            Thread.sleep(time);
+        } catch (InterruptedException e) {
+             System.out.println(e.getMessage());
+        }
     }
     // Старый pageAdder - на всякий случай
 //    public void pageAdder(String path, SiteEntity newSite){
@@ -152,20 +147,22 @@ public class IndexingServiceImpl implements IndexingService{
 //    }  //
 
     public void pageAdder(String url, String baseUrl, SiteEntity newSite){
-
-        System.out.println("url" + url);///////////////
-
+        String message = "";
         Connection.Response response = getResponse(url);
-
-        System.out.println("response " + response);
-        Document doc = null;
-        int status_code;
         if(response == null){
-            System.out.println("RESPONSE == NULL");
+            if(url.equals(baseUrl)) {
+                siteEntityController.setError(newSite.getId(), "Ошибка индексации: главная страница сайта недоступна");
+            }
             return;
         }
-        status_code = response.statusCode();
 
+        int status_code = response.statusCode();
+        if(url.equals(baseUrl) && status_code != 200) {
+            message = getMessageByStatusCode(status_code);
+            siteEntityController.setError(newSite.getId(), message);
+        }
+
+        Document doc = null;
         try {
             doc = response.parse();
         } catch (IOException e) {
@@ -185,16 +182,12 @@ public class IndexingServiceImpl implements IndexingService{
         // Добавили страницу, теперь добавляем леммы и индексы
         TextLemmasParser parser = new TextLemmasParser(); // НАДО СДЕЛАТЬ ОБЩИМ ПОТОМ для потока
         String text = parser.htmlTagsRemover(content);  // Очистили от тэгов
-
-
         HashMap<String, Integer> lemmas; // Список лемм
         try {
             lemmas = parser.lemmasCounter(text);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-
-
         for(String lemma : lemmas.keySet()){
             Integer lemma_id = lemmaController.getLemmaId(newSite.getId(), lemma);  // Получаем id, если есть
             if(lemma_id == null){
@@ -203,11 +196,41 @@ public class IndexingServiceImpl implements IndexingService{
             } else {
                 lemmaController.increaseFrequency(lemma_id);  // Или повысили frequency
             }
-
             //  Теперь будем заниматься индексом
             IndexEntity indexEntity = new IndexEntity(newPage, lemma_id, lemmas.get(lemma));
             indexController.addIndex(indexEntity);
         }
+    }
+
+    public String getMessageByStatusCode(int status_code){
+        String message;
+        switch(status_code){
+            case 200:
+                message = "";
+                break;
+            case 400:
+                message = "Некорректный запрос";
+                break;
+            case 401:
+                message = "Для доступа к запрашиваемому ресурсу требуется аутентификация";
+                break;
+            case 403:
+                message = "Доступ к ресурсу ограничен";
+                break;
+            case 404:
+                message = "Страница не найдена";
+                break;
+            case 405:
+                message = "Указанный метод неприменим к данному ресурсу";
+                break;
+            case 500:
+                message = "Внутренняя ошибка сервера";
+                break;
+            default:
+                message = status_code + "Неизвестная ошибка";
+                break;
+        }
+        return message;
     }
 
     public void statusChanger(SiteEntity newSite, Status status) {
@@ -327,8 +350,8 @@ public class IndexingServiceImpl implements IndexingService{
         Connection.Response response = null;
         try {
             response = Jsoup.connect(path)
-                    .userAgent(userAgent.getUserAgent())
-                    .referrer(referer.getReferer())
+                    .userAgent(connectionConfig.getUserAgent())
+                    .referrer(connectionConfig.getReferer())
                     .execute();
         } catch (IOException e) {
             e.printStackTrace();
