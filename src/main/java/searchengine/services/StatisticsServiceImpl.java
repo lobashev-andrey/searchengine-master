@@ -1,22 +1,15 @@
 package searchengine.services;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import searchengine.config.Site;
-import searchengine.config.SitesList;
 import searchengine.controllers.LemmaController;
 import searchengine.controllers.PageEntityController;
 import searchengine.controllers.SiteEntityController;
-import searchengine.dto.statistics.DetailedStatisticsItem;
-import searchengine.dto.statistics.StatisticsData;
-import searchengine.dto.statistics.StatisticsResponse;
-import searchengine.dto.statistics.TotalStatistics;
+import searchengine.dto.statistics.*;
 import searchengine.model.SiteEntity;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 @Service
 @RequiredArgsConstructor
@@ -27,13 +20,6 @@ public class StatisticsServiceImpl implements StatisticsService {
 
     @Override
     public synchronized StatisticsResponse getStatistics() {
-//        String[] statuses = { "INDEXED", "FAILED", "INDEXING" };
-//        String[] errors = {
-//                "Ошибка индексации: главная страница сайта не доступна",
-//                "Ошибка индексации: сайт не доступен",
-//                ""
-//        };
-
         TotalStatistics total = new TotalStatistics();
         List<SiteEntity> entities = siteEntityController.list();
         total.setSites(entities.size());
@@ -42,6 +28,7 @@ public class StatisticsServiceImpl implements StatisticsService {
 
         for(SiteEntity siteEntity : entities) {
             DetailedStatisticsItem item = new DetailedStatisticsItem();
+
             int site_id = siteEntity.getId();
             int pages = pageEntityController.countBySiteId(site_id);
             int lemmas = lemmaController.countLemmaBySiteId(site_id);

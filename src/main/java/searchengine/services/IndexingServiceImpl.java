@@ -2,6 +2,7 @@ package searchengine.services;
 
 import lombok.RequiredArgsConstructor;
 import org.jsoup.Connection;
+import org.jsoup.HttpStatusException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.springframework.stereotype.Service;
@@ -30,8 +31,9 @@ public class IndexingServiceImpl implements IndexingService{
     private final LemmaController lemmaController;
     private final IndexController indexController;
     private final ConnectionConfig connectionConfig;
-//    private final ConnectionConfig referer;
     private final Stopper stopper = new Stopper();
+
+
 
 
 
@@ -41,6 +43,12 @@ public class IndexingServiceImpl implements IndexingService{
             if(siteEntityController.isIndexing() && !stopper.isStop()){
                 return new IndexingResponseFalse("Индексация уже запущена");
             }
+            if(siteEntityController.isIndexing()){
+                for(int i : siteEntityController.listOfIndexing()){
+                    siteEntityController.setError(i, "Аварийное завершение программы");
+                    siteEntityController.setStatus(i, Status.FAILED);
+                }
+            }
             stopper.setStop(false);
         }
         List<Site> sitesForIndexing = sites.getSites();
@@ -49,8 +57,14 @@ public class IndexingServiceImpl implements IndexingService{
                 urlPlusSlash(s);
                 cleanTablesForSite(s);
                 SiteEntity newSite = createIndexingSiteEntity(s);
-                newSitePagesAdder(newSite);
-                statusChanger(newSite, stopper.isStop() ? Status.FAILED : Status.INDEXED);
+                boolean error = false;
+                try{
+                    newSitePagesAdder(newSite);            // ЕСЛИ БРОСИЛ ОШИБКУ, поставить last_error
+                } catch (Exception ex){
+                    setLastError(newSite, ex.getMessage());
+                    error = true;
+                }
+                statusChanger(newSite, (stopper.isStop() || error) ? Status.FAILED : Status.INDEXED);
             });
             thread.start();
         }
@@ -85,7 +99,7 @@ public class IndexingServiceImpl implements IndexingService{
         siteEntityController.addSiteEntity(newSite);
         return newSite;
     }
-    public void newSitePagesAdder(SiteEntity newSite) {
+    public void newSitePagesAdder(SiteEntity newSite) throws IOException {
         List<String> result = new ArrayList<>();
         Set<String> total = new HashSet<>();
         String baseUrl = newSite.getUrl();
@@ -96,8 +110,6 @@ public class IndexingServiceImpl implements IndexingService{
         for (String r : result) {
             if(stopper.isStop()){break;}
             pageAdder(r, baseUrl, newSite);
-//            String message = pageAdder(r, baseUrl, newSite);
-//            siteEntityController.setError(newSite.getId(), message);
             siteEntityController.refreshSiteEntity(newSite.getId());
         }
         long time = Math.round(100 + 50 * Math.random());
@@ -107,65 +119,36 @@ public class IndexingServiceImpl implements IndexingService{
              System.out.println(e.getMessage());
         }
     }
-    // Старый pageAdder - на всякий случай
-//    public void pageAdder(String path, SiteEntity newSite){
-//        PageEntity newPage = new PageEntity();
-//        Connection.Response response = null;
-//        Document doc = null;
-//        int status_code;
-//        try {
-//            response = Jsoup.connect(path)
-//                        .userAgent(userAgent.getUserAgent())
-//                        .referrer(referer.getReferer())
-//                        .execute();
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-//        if(response == null) return;
-//        status_code = response.statusCode();
-//
-//        try {
-//            doc = response.parse();
-//        } catch (IOException e) {
-//            System.out.println("IOException");
-//        }
-//        if(doc == null) return;
-//
-//        String contentType = response.contentType();
-//        String content = contentType;
-//        if(contentType != null && contentType.startsWith("text/html")){
-//            content = doc.html();
-//        }
-//        String rootPath = newSite.getUrl();
-//        path = path.substring(rootPath.length() - 1);
-//
-//        newPage.setSiteEntity(newSite);
-//        newPage.setCode(status_code);
-//        newPage.setPath(path);
-//        newPage.setContent(content);
-//        pageEntityController.addPageEntity(newPage);
-//    }  //
 
-    public void pageAdder(String url, String baseUrl, SiteEntity newSite){
-        String message = "";
-        Connection.Response response = getResponse(url);
-        if(response == null){
-            if(url.equals(baseUrl)) {
-                siteEntityController.setError(newSite.getId(), "Ошибка индексации: главная страница сайта недоступна");
+
+    public void pageAdder(String url, String baseUrl, SiteEntity newSite) throws IOException {
+        Connection.Response response = null;
+        int status_code;
+        try {
+            response = Jsoup.connect(url)
+                    .userAgent(connectionConfig.getUserAgent())
+                    .referrer(connectionConfig.getReferer())
+                    .execute();
+        } catch (HttpStatusException hex) {
+            status_code = hex.getStatusCode();
+            String message = getMessageByStatusCode(status_code);
+            if(url.equals(baseUrl)){
+                throw new IOException(message);     //  на главной - бросаем исключение с месседжем
             }
-            return;
+        } catch (IOException ex){
+            if(url.equals(baseUrl)){
+                throw new IOException("Неизвестная ошибка");     //  на главной - бросаем исключение с месседжем
+            }
+            return;                                 //  на остальных - просто прерываем текущую страницу
         }
+        if(response == null) return;
 
-        int status_code = response.statusCode();
-        if(url.equals(baseUrl) && status_code != 200) {
-            message = getMessageByStatusCode(status_code);
-            siteEntityController.setError(newSite.getId(), message);
-        }
-
+        ////////////////////////////////////// ПОСЛЕ получения response
+        status_code = response.statusCode();
         Document doc = null;
         try {
             doc = response.parse();
-        } catch (IOException e) {
+        } catch (Exception e) {
             System.out.println("IOException");
         }
         if(doc == null) return;
@@ -209,22 +192,22 @@ public class IndexingServiceImpl implements IndexingService{
                 message = "";
                 break;
             case 400:
-                message = "Некорректный запрос";
+                message = "400 - Некорректный запрос";
                 break;
             case 401:
-                message = "Для доступа к запрашиваемому ресурсу требуется аутентификация";
+                message = "401 - Для доступа к запрашиваемому ресурсу требуется аутентификация";
                 break;
             case 403:
-                message = "Доступ к ресурсу ограничен";
+                message = "403 - Доступ к ресурсу ограничен";
                 break;
             case 404:
-                message = "Страница не найдена";
+                message = "404 - Страница не найдена";
                 break;
             case 405:
-                message = "Указанный метод неприменим к данному ресурсу";
+                message = "405 - Указанный метод неприменим к данному ресурсу";
                 break;
             case 500:
-                message = "Внутренняя ошибка сервера";
+                message = "500 - Внутренняя ошибка сервера";
                 break;
             default:
                 message = status_code + "Неизвестная ошибка";
@@ -372,6 +355,45 @@ public class IndexingServiceImpl implements IndexingService{
             lemmaController.decreaseFrequency(id);
         }
     }
+
+    // Старый pageAdder - на всякий случай
+//    public void pageAdder(String path, SiteEntity newSite){
+//        PageEntity newPage = new PageEntity();
+//        Connection.Response response = null;
+//        Document doc = null;
+//        int status_code;
+//        try {
+//            response = Jsoup.connect(path)
+//                        .userAgent(userAgent.getUserAgent())
+//                        .referrer(referer.getReferer())
+//                        .execute();
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//        if(response == null) return;
+//        status_code = response.statusCode();
+//
+//        try {
+//            doc = response.parse();
+//        } catch (IOException e) {
+//            System.out.println("IOException");
+//        }
+//        if(doc == null) return;
+//
+//        String contentType = response.contentType();
+//        String content = contentType;
+//        if(contentType != null && contentType.startsWith("text/html")){
+//            content = doc.html();
+//        }
+//        String rootPath = newSite.getUrl();
+//        path = path.substring(rootPath.length() - 1);
+//
+//        newPage.setSiteEntity(newSite);
+//        newPage.setCode(status_code);
+//        newPage.setPath(path);
+//        newPage.setContent(content);
+//        pageEntityController.addPageEntity(newPage);
+//    }  //
 }
 
 

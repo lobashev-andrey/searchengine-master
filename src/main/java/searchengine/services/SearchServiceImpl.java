@@ -56,7 +56,6 @@ public class SearchServiceImpl implements SearchService{
         } catch (Exception ex) {
             return new SearchResponseFalse(ex.getMessage());
         }
-//        pageAndRank.keySet().forEach(System.out::println);
         return responseManager(pageAndRank, lemmas, limit);
     }
     public Map<String, Integer> deleteTooCommonLemmas(Map<String, Integer> map){
