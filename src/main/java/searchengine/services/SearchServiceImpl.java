@@ -165,9 +165,11 @@ public class SearchServiceImpl implements SearchService{
         String rawFragment = "";
         try {
             rawFragment =  parser.getFragmentWithAllLemmas(pageText, lemmas); // Поставил lemmas вместо order
+            System.out.println("RAW: " + rawFragment);
         } catch (IOException e) {
             e.printStackTrace();
         }
+        System.out.println("BOLD: " + parser.boldTagAdder(rawFragment, lemmas));
         return parser.boldTagAdder(rawFragment, lemmas);
     }
     public String getTextOnlyFromHtmlText(String htmlText){

@@ -69,8 +69,7 @@ public class TextLemmasParser {
             int count = 0;
             for(String lemma : lemmas){
                 if(indexToLemma.entrySet().stream().anyMatch
-                        (a -> (a.getKey() >= i && a.getKey() < (i + fragLength) && a.getValue().equals(lemma))))
-                {
+                        (a -> (a.getKey() >= i && a.getKey() < (i + fragLength) && a.getValue().equals(lemma)))){
                     count++;
                 }
             }
@@ -79,14 +78,15 @@ public class TextLemmasParser {
         Integer best = indexToNumberOfLemmas.keySet().stream()
                 .sorted(Comparator.comparing(indexToNumberOfLemmas::get)
                         .reversed()).collect(Collectors.toList()).get(0);
-        return text.substring(best,
-                Math.min((best + fragLength), text.length()));
+        String coreString = text.substring(best, Math.min((best + fragLength), text.length()));
+//        System.out.println("getFragmentWithAllLemmas: " + sentenceStartAdder(text, best) + coreString + sentenceEndAdder(text, best + fragLength));
+        return sentenceStartAdder(text, best) + coreString + sentenceEndAdder(text, best + fragLength);
     }
 
     public static String getTextOnlyFromHtmlText(String htmlText){
         Document doc = Jsoup.parse( htmlText );
         doc.outputSettings().charset("UTF-8");
-        htmlText = Jsoup.clean( doc.body().html(), Safelist.simpleText());
+        htmlText = Jsoup.clean( doc.body().html(), Safelist.simpleText()).replaceAll("&nbsp;+", " ");
         Pattern p = Pattern.compile("<.+?>");
         Matcher m = p.matcher(htmlText);
         return m.replaceAll("");
@@ -103,7 +103,6 @@ public class TextLemmasParser {
         Pattern p = Pattern.compile("[а-яё-]+");
         Matcher m = p.matcher(rawFragment.toLowerCase());
 
-        // КАК-ТО НАДО СДЕЛАТЬ ВЫДЕЛЕНИЕ <b></b>
         StringBuilder builder = new StringBuilder();
         int afterWord = 0;
         while(m.find()){
@@ -122,7 +121,35 @@ public class TextLemmasParser {
             builder.append(containsLemma ? "<b>" + originalWord + "</b>" : originalWord);
             afterWord = index + lowCaseWord.length();
         }
-        return "*** " + builder.toString();
+        return builder + rawFragment.substring(afterWord);
+    }
+
+    public String sentenceStartAdder(String text, Integer best) {
+        Pattern p = Pattern.compile(".*[.?!] ");
+        Matcher m = p.matcher(text.substring(0, best));
+        String startSentence = m.replaceAll("");
+        if(startSentence.length() > 30){
+            startSentence = startSentence.substring(0, startSentence.indexOf(" ", 20)) + "... ";
+        }
+        return startSentence;
+    }
+
+    public String sentenceEndAdder(String text, int afterFragment){
+        text = text + " ";
+        String ending = text.substring(afterFragment);
+        Pattern p = Pattern.compile("[.?!] .*");
+        Matcher m = p.matcher(ending);
+        if(m.find()){
+            String mark = m.group().substring(0, 2);
+            ending = m.replaceAll("") + mark;
+        }
+
+        if(ending.length() > 20){
+            int space = ending.substring(20).indexOf(" ");
+            ending = (space == -1) ? ending : (ending.substring(0, 20 + space) + "...");
+            System.out.println("************** ENDING" + ending);
+        }
+        return ending;
     }
 
 
