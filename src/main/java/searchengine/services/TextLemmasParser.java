@@ -25,14 +25,12 @@ public class TextLemmasParser {
         return m.replaceAll(" ");
     }
 
-
     public HashMap<String, Integer> lemmasCounter(String text) throws IOException {
         LuceneMorphology luceneMorph = new RussianLuceneMorphology();
         HashMap<String, Integer> map = new HashMap<>();
 
         Pattern p = Pattern.compile("[а-яё-]+");
         Matcher m = p.matcher(text.toLowerCase());
-//        ArrayList<String> words = new ArrayList<>();
         while(m.find()){
             String word = m.group();
             List<String> wordBaseForms = luceneMorph.getMorphInfo(word);
@@ -49,23 +47,10 @@ public class TextLemmasParser {
 
     public String getFragmentWithAllLemmas(String htmlText, List<String> lemmas) throws IOException {
         String text = getTextOnlyFromHtmlText(htmlText);
-        LuceneMorphology luceneMorph = new RussianLuceneMorphology();
-        HashMap<Integer, String> indexToLemma = new HashMap<>();
-        Pattern p = Pattern.compile("[а-яё-]+");
-        Matcher m = p.matcher(text.toLowerCase());
-        while(m.find()){
-            String word = m.group();
-            Integer index = m.start();  // Тут можно не Integer, а Float и в цикле добавлять по 0,1, чтобы взять все леммы слова
-            List<String> wordBaseForms = luceneMorph.getMorphInfo(word);
-            for(String s : wordBaseForms){
-                if(lemmas.contains(s.substring(0, s.indexOf("|")))){
-                    indexToLemma.put(index, s.substring(0, s.indexOf("|")));
-                }
-            }
-        }
-        int fragLength = 230;
+        Map<Integer, String> indexToLemma = getIndexToLemma(text, lemmas);
+        int fragLength = 200;
         HashMap<Integer, Integer> indexToNumberOfLemmas = new HashMap<>();
-        for(Integer i : indexToLemma.keySet()){  // А тут, соответственно, для каждого i брать отрезок от i/1 до (i + frL)/1 + 0,5
+        for(Integer i : indexToLemma.keySet()){
             int count = 0;
             for(String lemma : lemmas){
                 if(indexToLemma.entrySet().stream().anyMatch
@@ -77,9 +62,8 @@ public class TextLemmasParser {
         }
         Integer best = indexToNumberOfLemmas.keySet().stream()
                 .sorted(Comparator.comparing(indexToNumberOfLemmas::get)
-                        .reversed()).collect(Collectors.toList()).get(0);
+                .reversed()).collect(Collectors.toList()).get(0);
         String coreString = text.substring(best, Math.min((best + fragLength), text.length()));
-//        System.out.println("getFragmentWithAllLemmas: " + sentenceStartAdder(text, best) + coreString + sentenceEndAdder(text, best + fragLength));
         return sentenceStartAdder(text, best) + coreString + sentenceEndAdder(text, best + fragLength);
     }
 
@@ -93,7 +77,7 @@ public class TextLemmasParser {
     }
 
     public String boldTagAdder(String rawFragment, List<String> lemmas){
-        rawFragment = " " + rawFragment + " ";
+        rawFragment = rawFragment + " ";
         LuceneMorphology luceneMorph = null;
         try {
             luceneMorph = new RussianLuceneMorphology();
@@ -102,7 +86,6 @@ public class TextLemmasParser {
         }
         Pattern p = Pattern.compile("[а-яё-]+");
         Matcher m = p.matcher(rawFragment.toLowerCase());
-
         StringBuilder builder = new StringBuilder();
         int afterWord = 0;
         while(m.find()){
@@ -121,7 +104,7 @@ public class TextLemmasParser {
             builder.append(containsLemma ? "<b>" + originalWord + "</b>" : originalWord);
             afterWord = index + lowCaseWord.length();
         }
-        return builder + rawFragment.substring(afterWord);
+        return (builder + rawFragment.substring(afterWord).trim());
     }
 
     public String sentenceStartAdder(String text, Integer best) {
@@ -147,10 +130,30 @@ public class TextLemmasParser {
         if(ending.length() > 20){
             int space = ending.substring(20).indexOf(" ");
             ending = (space == -1) ? ending : (ending.substring(0, 20 + space) + "...");
-            System.out.println("************** ENDING" + ending);
         }
         return ending;
     }
+
+    public Map<Integer, String> getIndexToLemma(String text, List<String> lemmas) throws IOException {
+        LuceneMorphology luceneMorph = new RussianLuceneMorphology();
+        Map<Integer, String> indexToLemma = new HashMap<>();
+        Pattern p = Pattern.compile("[а-яё-]+");
+        Matcher m = p.matcher(text.toLowerCase());
+        while(m.find()){
+            String word = m.group();
+            Integer index = m.start();
+            List<String> wordBaseForms = luceneMorph.getMorphInfo(word);
+            for(String s : wordBaseForms){
+                if(lemmas.contains(s.substring(0, s.indexOf("|")))){
+                    indexToLemma.put(index, s.substring(0, s.indexOf("|")));
+                }
+            }
+        }
+        return indexToLemma;
+    }
+
+
+
 
 
 }

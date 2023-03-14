@@ -33,7 +33,7 @@ public class SearchServiceImpl implements SearchService{
     private final SiteEntityController siteEntityController;
     private final IndexController indexController;
     private final TextLemmasParser parser = new TextLemmasParser();
-    private final int threshold = 70;
+    private final int maxPercentOfPagesForLemma = 70;
 
 
     @Override
@@ -56,12 +56,12 @@ public class SearchServiceImpl implements SearchService{
         } catch (Exception ex) {
             return new SearchResponseFalse(ex.getMessage());
         }
-        return responseManager(pageAndRank, lemmas, limit);
+        return responseManager(pageAndRank, lemmas, limit, offset);
     }
     public Map<String, Integer> deleteTooCommonLemmas(Map<String, Integer> map){
         Integer minValue = map.values().stream().min(Comparator.naturalOrder()).orElse(0);
         int noMoreThan = Math.max(
-                pageEntityController.countAll() * threshold / 100,
+                pageEntityController.countAll() * maxPercentOfPagesForLemma / 100,
                 minValue);
         List<String> toRemove = map.keySet().stream()
                                 .filter(a->map.get(a) > noMoreThan)
@@ -114,71 +114,63 @@ public class SearchServiceImpl implements SearchService{
         }
         return pageAndRank;
     }
-    public SearchResponse responseManager(Map<Integer, Float> pageAndRank, List<String> lemmas, int limit){
+    public SearchResponse responseManager(Map<Integer, Float> pageAndRank, List<String> lemmas, int limit, int offset){
         SearchResponseTrue searchResponse = new SearchResponseTrue();
-        searchResponse.setResult(true);
         searchResponse.setCount(pageAndRank.size());
         List<SinglePageSearchData> totalData = new ArrayList<>();
-
         List<Integer> finalOrderOfPages = pageAndRank.keySet().stream()
                 .sorted(Comparator.comparing(pageAndRank::get)
-                        .reversed()).collect(Collectors.toList());
+                .reversed()).collect(Collectors.toList());
 
         int count = 0;
         for(Integer f : finalOrderOfPages){
-//            if(count !=0 && count % limit == 0){
-//                break;
-//            }
-
-            System.out.println("Страница " + f + " и ее relRank: " + pageAndRank.get(f));
-            SinglePageSearchData pageData = new SinglePageSearchData();
-            PageEntity currentPage = pageEntityController.getPageEntityById(f);
-            SiteEntity currentSite = currentPage.getSiteEntity();
-            String baseUrl = currentSite.getUrl().substring(0, currentSite.getUrl().length() - 1);
-            pageData.setSite(baseUrl); // УБРАТЬ слэш
-            pageData.setSiteName(currentSite.getName());
-            pageData.setUri(currentPage.getPath());
-
-            Document doc = null;
-            try {
-                doc = Jsoup.connect(baseUrl + currentPage.getPath()).get();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-            Elements elements = doc.select("title");
-            String title = elements.text();
-            pageData.setTitle(title);
-            pageData.setRelevance(pageAndRank.get(f));
-            //     snippet
-            String snippet = snippetMaker(doc, lemmas);
-            pageData.setSnippet(snippet);
-
+            if(count < offset) continue;
+            count++;
+//            if(count + offset % limit == 0){ break; }
+            SinglePageSearchData pageData = getPageData(f, pageAndRank, lemmas);
             totalData.add(pageData);
-//            count++;
         }
         searchResponse.setData(totalData);
-
         return searchResponse;
+    }
+    public SinglePageSearchData getPageData(int f, Map<Integer, Float> pageAndRank, List<String> lemmas){
+        SinglePageSearchData pageData = new SinglePageSearchData();
+        PageEntity currentPage = pageEntityController.getPageEntityById(f);
+        SiteEntity currentSite = currentPage.getSiteEntity();
+        String baseUrl = currentSite.getUrl().substring(0, currentSite.getUrl().length() - 1);
+        pageData.setSite(baseUrl);
+        pageData.setSiteName(currentSite.getName());
+        pageData.setUri(currentPage.getPath());
+
+        Document doc = null;
+        try {
+            doc = Jsoup.connect(baseUrl + currentPage.getPath()).get();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        Elements elements = doc.select("title");
+        String title = elements.text();
+        pageData.setTitle(title);
+        pageData.setRelevance(pageAndRank.get(f));
+        String snippet = snippetMaker(doc, lemmas);
+        pageData.setSnippet(snippet);
+        return pageData;
     }
     public String snippetMaker(Document doc, List<String> lemmas){
         String pageText = getTextOnlyFromHtmlText(doc.html());
         String rawFragment = "";
         try {
-            rawFragment =  parser.getFragmentWithAllLemmas(pageText, lemmas); // Поставил lemmas вместо order
-            System.out.println("RAW: " + rawFragment);
+            rawFragment =  parser.getFragmentWithAllLemmas(pageText, lemmas);
         } catch (IOException e) {
             e.printStackTrace();
         }
-        System.out.println("BOLD: " + parser.boldTagAdder(rawFragment, lemmas));
         return parser.boldTagAdder(rawFragment, lemmas);
-    }
-    public String getTextOnlyFromHtmlText(String htmlText){
+    }public String getTextOnlyFromHtmlText(String htmlText){
         Document doc = Jsoup.parse( htmlText );
         doc.outputSettings().charset("UTF-8");
         htmlText = Jsoup.clean( doc.body().html(), Safelist.simpleText());
         return htmlText;
     }
-
     public Integer[] getSitesWhereToSearch(String site) throws NotIndexedException {
         // Это должны быть проиндексированные сайты, по которым надо искать
         List<SiteEntity> whereSearch = new ArrayList<>();
@@ -193,7 +185,6 @@ public class SearchServiceImpl implements SearchService{
         }
         return whereSearch.stream().map(SiteEntity::getId).toArray(Integer[]::new);
     }
-
     public Map<Integer, Float> rankPages(List<String> order, Integer[] sites_ids){
         List<Integer> reducingListOfPages = new ArrayList<>();
         Set<Integer> lemmaIdsForRank = new HashSet<>();
@@ -223,5 +214,4 @@ public class SearchServiceImpl implements SearchService{
         }
         return getPagesAndRanks(lemmaIdsForRank, reducingListOfPages);
     }
-
 }
