@@ -16,7 +16,10 @@ import java.util.List;
 
 public class Main {
     public static void main(String[] args) throws IOException {
-        ;
+        String text = "однажды в студеную зимнюю пору... смотрю: поднимается медленно; в гору... лошадку ведет под уздцы!";
+        TextLemmasParser parser = new TextLemmasParser();
+        System.out.println(parser.sentenceEndAdder(text, 36));
+
 
 
 

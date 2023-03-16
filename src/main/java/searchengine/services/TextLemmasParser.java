@@ -123,13 +123,18 @@ public class TextLemmasParser {
         Pattern p = Pattern.compile("[.?!] .*");
         Matcher m = p.matcher(ending);
         if(m.find()){
-            String mark = m.group().substring(0, 2);
+            String mark = m.group().substring(0, 1);
             ending = m.replaceAll("") + mark;
         }
-
         if(ending.length() > 20){
             int space = ending.substring(20).indexOf(" ");
-            ending = (space == -1) ? ending : (ending.substring(0, 20 + space) + "...");
+            ending = (space == -1) ?
+                            ending :
+                           (ending.substring(0, 20) +
+                            ending.substring(20, 20 + space)
+                            .replaceAll("[:;,]", "")
+                            .replace("...", "") +
+                            "...");
         }
         return ending;
     }

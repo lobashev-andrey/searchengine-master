@@ -277,12 +277,9 @@ public class IndexingServiceImpl implements IndexingService{
     public void pageAndLemmasAdder(String url, SiteEntity newSite) throws IOException {
         String path = pathFromUrl(url, newSite);
         if(pageEntityController.findBySiteIdAndPath(newSite.getId(), path) != null){   // Есть такая страница(site_id & path) - удаляем
-            System.out.println("YES");
-            // Тут бы надо хранимую процедуру с уменьшением frequency, но пока так:
             decreaseFrequency(newSite.getId(), path);
             pageEntityController.deletePageBySiteIdAndPath(newSite.getId(), path);
         }
-
         Connection.Response response = getResponse(url);
         Document doc = null;
         int status_code;
