@@ -49,7 +49,7 @@ public class RecursiveIndexer extends RecursiveTask<List<String>> {
                 pageConstructors.add(rec);
             }
         } catch (IOException e) {
-            System.out.println("IOException RecursiveIndexer");;
+            System.out.println("IOException RecursiveIndexer: " + address);;
         }
 
         for (RecursiveIndexer task : pageConstructors) {

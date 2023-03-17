@@ -44,13 +44,15 @@ public class LemmaController {
 
 
     @PutMapping("/")
-    public void increaseFrequency(int id){
+    public LemmaEntity increaseFrequency(int id){
         Optional<LemmaEntity> optional = lemmaRepository.findById(id);
+        LemmaEntity lem = null;
         if(optional.isPresent()){
-            LemmaEntity lem = optional.get();
+            lem = optional.get();
             lem.setFrequency(lem.getFrequency() + 1);
             lemmaRepository.save(lem);
         }
+        return lem;
     }
     @PostMapping("/{id}")
     public void decreaseFrequency(@PathVariable int id){
@@ -72,6 +74,11 @@ public class LemmaController {
     public void deleteBySiteId(int site_id){
         Iterable<Integer> iterable = lemmaRepository.getLemmaIdBySiteId(site_id);
         lemmaRepository.deleteAllById(iterable);
+    }
+
+    @PostMapping("/saveAll")
+    public void saveAll(List<LemmaEntity> list){
+        lemmaRepository.saveAll(list);
     }
 
 
