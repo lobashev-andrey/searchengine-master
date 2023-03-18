@@ -125,7 +125,7 @@ public class IndexingServiceImpl implements IndexingService{
         int site_id;
         if(oldSite != null){
             // Узнали id сайта, теперь уберем упоминания из lemmas
-            lemmaController.deleteBySiteId(oldSite.getId());
+            lemmaController.deleteBySiteId(oldSite.getId()); ////////////  НАДО ДОБАВИТЬ @ONDELETE!!!!!!!!!!!
             // А потом и сам сайт - а он каскадом уберет страницы и индексы
             siteEntityController.deleteSiteEntity(oldSite);
         }
@@ -243,24 +243,46 @@ public class IndexingServiceImpl implements IndexingService{
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-
-        // Вот это нужно попробовать сделать через multiInsert (сохранил и закомиттил ниже)
+        // Третий вариант с двумя мультиинсертами
+        Map<LemmaEntity, Integer> lemmaMap = new HashMap<>();
+        List<LemmaEntity> lemmasToSaveAll = new ArrayList<>();
         List<IndexEntity> indexList = new ArrayList<>();
-        for(String lemma : lemmas.keySet()){
+        for(String lemma : lemmas.keySet()){ //  Для каждой леммы:
+
+            // ТУТ надо подумать, как еще сделать мульти получение лемма id
+
             Integer lemma_id = lemmaController.getLemmaId(newSite.getId(), lemma);  // Получаем id, если есть
-            //int frequency = 1;////////////////////////
+            LemmaEntity lemmaEntity;
             if(lemma_id == null){
-                LemmaEntity lemmaEntity = new LemmaEntity(newSite.getId(), lemma, 1);
-                lemma_id = lemmaController.addLemma(lemmaEntity);  //  Или добавили новую
+                lemmaEntity = new LemmaEntity(newSite.getId(), lemma, 1);
+                lemmasToSaveAll.add(lemmaEntity);
             } else {
-                lemmaController.increaseFrequency(lemma_id);  ///////// Или повысили frequency ВЕРНУТЬ, чтобы не извлекать
+                lemmaEntity = lemmaController.increaseFrequency(lemma_id);///////// Или повысили frequency ВЕРНУТЬ, чтобы не извлекать
             }
-
-
-            IndexEntity indexEntity = new IndexEntity(newPage, lemma_id, lemmas.get(lemma));
-            indexList.add(indexEntity);
+            lemmaMap.put(lemmaEntity, lemmas.get(lemma));
+        }
+        lemmaController.saveAll(lemmasToSaveAll);
+        for(LemmaEntity le : lemmaMap.keySet()){
+            indexList.add(new IndexEntity(newPage, le.getId(), lemmaMap.get(le)));
         }
         indexController.saveAll(indexList);
+
+//        // Второй вариант с индекс-мультиИнсерт
+//        List<IndexEntity> indexList = new ArrayList<>();
+//        for(String lemma : lemmas.keySet()){
+//            Integer lemma_id = lemmaController.getLemmaId(newSite.getId(), lemma);  // Получаем id, если есть
+//            //int frequency = 1;////////////////////////
+//            if(lemma_id == null){
+//                LemmaEntity lemmaEntity = new LemmaEntity(newSite.getId(), lemma, 1);
+//                lemma_id = lemmaController.addLemma(lemmaEntity);  //  Или добавили новую
+//            } else {
+//                lemmaController.increaseFrequency(lemma_id);  ///////// Или повысили frequency ВЕРНУТЬ, чтобы не извлекать
+//            }
+//            IndexEntity indexEntity = new IndexEntity(newPage, lemma_id, lemmas.get(lemma));
+//            indexList.add(indexEntity);
+//        }
+//        indexController.saveAll(indexList);
+
 //          Начальный вариант
 //        for(String lemma : lemmas.keySet()){
 //            Integer lemma_id = lemmaController.getLemmaId(newSite.getId(), lemma);  // Получаем id, если есть

@@ -26,6 +26,7 @@ public class TextLemmasParser {
     }
 
     public HashMap<String, Integer> lemmasCounter(String text) throws IOException {
+        text = text.replace("ё", "е"); ///////////////////////////////////////ЁЁЁЁЁЁ
         LuceneMorphology luceneMorph = new RussianLuceneMorphology();
         HashMap<String, Integer> map = new HashMap<>();
 
