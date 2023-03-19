@@ -41,6 +41,18 @@ public class LemmaController {
     }
 
 
+    @GetMapping("/{site_id}")
+    public List<LemmaEntity> getLemmasBySiteIdAndLemmaNameAndIncreaseFrequency(int site_id, String[] lemmaNames){
+        List<LemmaEntity> list = new ArrayList<>();
+        Iterable<LemmaEntity> iterable = lemmaRepository.getLemmasBySiteIdAndLemmaName(site_id, lemmaNames);
+        for(LemmaEntity le : iterable){
+            le.setFrequency(le.getFrequency() + 1);
+            list.add(le);
+        }
+        System.out.println("Controller      -        lemmaNames.length: " + lemmaNames.length + "  list.size: " + list.size());
+        lemmaRepository.saveAll(list);
+        return list;
+    }
 
 
     @PutMapping("/")

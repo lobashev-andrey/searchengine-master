@@ -26,7 +26,6 @@ public class TextLemmasParser {
     }
 
     public HashMap<String, Integer> lemmasCounter(String text) throws IOException {
-        text = text.replace("ё", "е"); ///////////////////////////////////////ЁЁЁЁЁЁ
         LuceneMorphology luceneMorph = new RussianLuceneMorphology();
         HashMap<String, Integer> map = new HashMap<>();
 
@@ -47,7 +46,8 @@ public class TextLemmasParser {
     }
 
     public String getFragmentWithAllLemmas(String htmlText, List<String> lemmas) throws IOException {
-        String text = getTextOnlyFromHtmlText(htmlText);
+        String textWithYo = getTextOnlyFromHtmlText(htmlText);
+        String text = textWithYo; // .replace('ё', 'е').replace('Ё', 'Е')
         Map<Integer, String> indexToLemma = getIndexToLemma(text, lemmas);
         int fragLength = 200;
         HashMap<Integer, Integer> indexToNumberOfLemmas = new HashMap<>();
@@ -64,8 +64,9 @@ public class TextLemmasParser {
         Integer best = indexToNumberOfLemmas.keySet().stream()
                 .sorted(Comparator.comparing(indexToNumberOfLemmas::get)
                 .reversed()).collect(Collectors.toList()).get(0);
-        String coreString = text.substring(best, Math.min((best + fragLength), text.length()));
-        return sentenceStartAdder(text, best) + coreString + sentenceEndAdder(text, best + fragLength);
+        int endOfCoreString = Math.min((best + fragLength), text.length());
+        String coreString = textWithYo.substring(best, endOfCoreString);
+        return sentenceStartAdder(textWithYo, best) + coreString + sentenceEndAdder(textWithYo, endOfCoreString);
     }
 
     public static String getTextOnlyFromHtmlText(String htmlText){

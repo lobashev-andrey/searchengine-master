@@ -45,33 +45,12 @@ public class StatisticsServiceImpl implements StatisticsService {
             detailed.add(item);
         }
 
-        StatisticsResponse response = new StatisticsResponse();
         StatisticsData data = new StatisticsData();
         data.setTotal(total);
         data.setDetailed(detailed);
-        response.setStatistics(data);
-        response.setResult(entities.size() > 0);
-        return response;
+
+        return new StatisticsResponse(data);
     }
-
-
-//    for(int i = 0; i < sitesList.size(); i++) {
-//        Site site = sitesList.get(i);
-//        DetailedStatisticsItem item = new DetailedStatisticsItem();
-//        item.setName(site.getName());
-//        item.setUrl(site.getUrl());
-//        int pages = random.nextInt(1_000);
-//        int lemmas = pages * random.nextInt(1_000);
-//        item.setPages(pages);
-//        item.setLemmas(lemmas);
-//        item.setStatus(statuses[i % 3]);
-//        item.setError(errors[i % 3]);
-//        item.setStatusTime(System.currentTimeMillis() -
-//                (random.nextInt(10_000)));
-//        total.setPages(total.getPages() + pages);
-//        total.setLemmas(total.getLemmas() + lemmas);
-//        detailed.add(item);
-//    }
 }
 
 

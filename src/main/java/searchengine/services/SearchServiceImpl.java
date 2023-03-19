@@ -38,35 +38,51 @@ public class SearchServiceImpl implements SearchService{
 
     @Override
     public SearchResponse getSearch(String query, String site, int offset, int limit) {
-        List<String> lemmas;
-        List<String> order;
+        List<String> lemmas = new ArrayList<>();
+        List<String> order = new ArrayList<>();
         Map<Integer, Float> pageAndRank;
 
         try{
             if(query.length() == 0){
                 throw new EmptyQueryException("Задан пустой поисковый запрос");
             }
-            lemmas = queryToLemmaList(query);
-            order = getOrderedListOfRareLemmas(lemmas);
-            if(order.size() == 0){
-                throw new WrongQueryFormatException("В запросе отсутствуют слова из русского словаря");
+            lemmas = queryToLemmaList(query); // .replace("ё", "е").replace('Ё', 'Е')
+            if(lemmas.size() == 0){
+                throw new WrongQueryFormatException("В базе отсутствуют предложенные в запросе слова");
             }
+            order = getOrderedListOfRareLemmas(lemmas);
             Integer[] sites_ids = getSitesWhereToSearch(site);
             pageAndRank = rankPages(order, sites_ids);
+
         } catch (Exception ex) {
             return new SearchResponseFalse(ex.getMessage());
         }
         return responseManager(pageAndRank, lemmas, limit, offset);
     }
-    public Map<String, Integer> deleteTooCommonLemmas(Map<String, Integer> map){
-        Integer minValue = map.values().stream().min(Comparator.naturalOrder()).orElse(0);
-        int noMoreThan = Math.max(
-                pageEntityController.countAll() * maxPercentOfPagesForLemma / 100,
-                minValue);
+    public List<String> getOrderedListOfRareLemmas(List<String> lemmas) throws WrongQueryFormatException {
+        Map<String, Integer> lemmaToAmountOfPages = new HashMap<>();
+        for(String lemma : lemmas){
+            Integer numPages = lemmaController.getSumFrequency(lemma);
+            if(numPages != null){
+                lemmaToAmountOfPages.put(lemma, numPages);
+            }
+        }
+        lemmaToAmountOfPages = deleteTooCommonLemmas(lemmaToAmountOfPages); // Убираем из HashMap слишком частые леммы
+        return lemmaToAmountOfPages.keySet().stream()  //  - ТОЛЬКО РЕДКИЕ ЛЕММЫ
+                .sorted(Comparator.comparing(lemmaToAmountOfPages::get)).collect(Collectors.toList());
+    }
+    public Map<String, Integer> deleteTooCommonLemmas(Map<String, Integer> map) throws WrongQueryFormatException {
+        int before = map.size();
+        int noMoreThan = pageEntityController.countAll() * maxPercentOfPagesForLemma / 100;
         List<String> toRemove = map.keySet().stream()
                                 .filter(a->map.get(a) > noMoreThan)
                                 .collect(Collectors.toList());
         toRemove.forEach(map::remove);
+        map.keySet().forEach(a->System.out.println(a + " " + map.get(a)));
+
+        if(map.size() == 0 && before != 0){
+            throw new WrongQueryFormatException("Данные слова есть на более чем " + maxPercentOfPagesForLemma +  "% проиндексированных страниц");
+        }
         return map;
     }
     public List<Integer> intersectionList(List<Integer> a, List<Integer> b){
@@ -86,18 +102,6 @@ public class SearchServiceImpl implements SearchService{
             throw new RuntimeException(e);
         }
         return lemmas;
-    }
-    public List<String> getOrderedListOfRareLemmas(List<String> lemmas){
-        Map<String, Integer> lemmaToAmountOfPages = new HashMap<>();
-        for(String lemma : lemmas){
-            Integer numPages = lemmaController.getSumFrequency(lemma);
-            if(numPages != null){
-                lemmaToAmountOfPages.put(lemma, numPages);
-            }
-        }
-        lemmaToAmountOfPages = deleteTooCommonLemmas(lemmaToAmountOfPages); // Убираем из HashMap слишком частые леммы
-        return lemmaToAmountOfPages.keySet().stream()  //  - ТОЛЬКО РЕДКИЕ ЛЕММЫ
-                .sorted(Comparator.comparing(lemmaToAmountOfPages::get)).collect(Collectors.toList());
     }
     public Map<Integer, Float> getPagesAndRanks(Set<Integer> lemmaIdsForRank, List<Integer> pagesToReduce){
         Integer[] lemmaIdsForRankArray = lemmaIdsForRank.toArray(new Integer[0]); // НЕ ОБРАЩАТЬ ВНИМАНИЯ
@@ -142,12 +146,13 @@ public class SearchServiceImpl implements SearchService{
         pageData.setSiteName(currentSite.getName());
         pageData.setUri(currentPage.getPath());
 
-        Document doc = null;
-        try {
-            doc = Jsoup.connect(baseUrl + currentPage.getPath()).get();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        Document doc = null;                                         // А ЭТО НАДО ЛИ? У НАС ЖЕ ЕСТЬ content
+        try {                                                        //
+            doc = Jsoup.connect(baseUrl + currentPage.getPath()).get(); //
+        } catch (IOException e) {                                     //
+            throw new RuntimeException(e);                            //
         }
+
         Elements elements = doc.select("title");
         String title = elements.text();
         pageData.setTitle(title);
@@ -165,7 +170,8 @@ public class SearchServiceImpl implements SearchService{
             e.printStackTrace();
         }
         return parser.boldTagAdder(rawFragment, lemmas);
-    }public String getTextOnlyFromHtmlText(String htmlText){
+    }
+    public String getTextOnlyFromHtmlText(String htmlText){
         Document doc = Jsoup.parse( htmlText );
         doc.outputSettings().charset("UTF-8");
         htmlText = Jsoup.clean( doc.body().html(), Safelist.simpleText());

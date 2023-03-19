@@ -2,6 +2,7 @@ package searchengine.services;
 
 
 import lombok.AllArgsConstructor;
+import org.jsoup.HttpStatusException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -33,7 +34,7 @@ public class RecursiveIndexer extends RecursiveTask<List<String>> {
             for(Element el : elements){
                 if(el.hasAttr("onclick")){continue;}
                 String child = el.attr("abs:href");
-                if(!child.startsWith(baseUrl) || child.contains("#") || child.contains(".pdf")|| child.contains(".jpeg")  || child.contains(".jpg") || child.contains(".png") || child.contains(".mp4") || child.contains(".docx") || child.contains(".doc") || child.contains(".xls") || child.contains(".pptx") || child.contains("?http") || child.contains("\\")) {
+                if(!child.startsWith(baseUrl) || child.contains("#") || child.contains(".pdf")|| child.contains(".jpeg")  || child.contains(".jpg") || child.contains(".png") || child.contains(".mp4") || child.contains(".docx") || child.contains(".doc") || child.contains(".xls") || child.contains(".pptx") || child.contains("?http") || child.contains("\\") || child.contains("JPG") || child.contains("JPEG")) {
                     continue;
                 }
                 int before = total.size();
@@ -48,8 +49,10 @@ public class RecursiveIndexer extends RecursiveTask<List<String>> {
                 rec.fork();
                 pageConstructors.add(rec);
             }
-        } catch (IOException e) {
-            System.out.println("IOException RecursiveIndexer: " + address);;
+        } catch (HttpStatusException h) {
+            System.out.println("IOException RecursiveIndexer: " + address + " " + h.getStatusCode() + " " + h.getMessage());;
+        }  catch (IOException e) {
+            System.out.println("IOException RecursiveIndexer: " + address + e.getMessage());;
         }
 
         for (RecursiveIndexer task : pageConstructors) {
