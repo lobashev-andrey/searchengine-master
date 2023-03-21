@@ -38,8 +38,8 @@ public class SearchServiceImpl implements SearchService{
 
     @Override
     public SearchResponse getSearch(String query, String site, int offset, int limit) {
-        List<String> lemmas = new ArrayList<>();
-        List<String> order = new ArrayList<>();
+        List<String> lemmas;
+        List<String> order;
         Map<Integer, Float> pageAndRank;
 
         try{
@@ -47,6 +47,8 @@ public class SearchServiceImpl implements SearchService{
                 throw new EmptyQueryException("Задан пустой поисковый запрос");
             }
             lemmas = queryToLemmaList(query); // .replace("ё", "е").replace('Ё', 'Е')
+
+
             if(lemmas.size() == 0){
                 throw new WrongQueryFormatException("В базе отсутствуют предложенные в запросе слова");
             }
@@ -130,7 +132,7 @@ public class SearchServiceImpl implements SearchService{
         for(Integer f : finalOrderOfPages){
             if(count < offset) continue;
             count++;
-//            if(count + offset % limit == 0){ break; }
+            if(count + offset % limit == 0){ break; }
             SinglePageSearchData pageData = getPageData(f, pageAndRank, lemmas);
             totalData.add(pageData);
         }

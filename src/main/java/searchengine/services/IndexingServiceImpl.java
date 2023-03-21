@@ -147,18 +147,20 @@ public class IndexingServiceImpl implements IndexingService{
         String baseUrl = newSite.getUrl();
         result.add(baseUrl);
         total.add(baseUrl);
-        result.addAll(new ForkJoinPool().invoke(new RecursiveIndexer(baseUrl, baseUrl, total, stopper)));
+        RecursiveIndexerParams params = new RecursiveIndexerParams(baseUrl, baseUrl, total, stopper, connectionConfig);
+        result.addAll(new ForkJoinPool().invoke(new RecursiveIndexer(params)));
 
         for (String r : result) {
+
             if(stopper.isStop()){break;}
             pageAdder(r, baseUrl, newSite);
             siteEntityController.refreshSiteEntity(newSite.getId());
-        }
-        long time = Math.round(100 + 50 * Math.random());
-        try {
-            Thread.sleep(time);
-        } catch (InterruptedException e) {
-             System.out.println(e.getMessage());
+            long time = Math.round(100 + 50 * Math.random());
+            try {
+                Thread.sleep(time);
+            } catch (InterruptedException e) {
+                System.out.println(e.getMessage());
+            }
         }
     }
     public Connection.Response newResponse(String url, String baseUrl) throws IOException {
@@ -252,7 +254,6 @@ public class IndexingServiceImpl implements IndexingService{
         for(LemmaEntity le : increasedLemmas){
             indexList.add(new IndexEntity(newPage, le.getId(), lemmas.get(le.getLemma())));
         }
-
 
         indexController.saveAll(indexList);
         lemmasToRemove.clear(); ///////////////////////////////// На всякий

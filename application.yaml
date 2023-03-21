@@ -24,16 +24,16 @@ indexing-settings:
 #      name: Niko art gallery
 #    - url: https://et-cetera.ru/mobile/
 #      name: Театр «Et Cetera»
-    - url: https://dombulgakova.ru/
-      name: Дом Булгакова
-    - url: https://skillbox.ru/media/code/
-      name: SomeStr
+#    - url: https://dombulgakova.ru/
+#      name: Дом Булгакова
+#    - url: https://skillbox.ru/media/code/
+#      name: SomeStr
     - url: http://radiomv.ru/actions/
       name: RadioMV
-    - url: https://www.svetlovka.ru/
-      name: Библиотека им.Светлова
-    - url: https://www.dextra.ru/services/seo/
-      name: Декстра
+#    - url: https://www.svetlovka.ru/
+#      name: Библиотека им.Светлова
+#    - url: https://www.dextra.ru/services/seo/
+#      name: Декстра
 
 
   userAgent:
