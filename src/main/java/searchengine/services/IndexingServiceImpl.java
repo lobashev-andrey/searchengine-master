@@ -21,6 +21,7 @@ import searchengine.model.*;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Service
@@ -37,7 +38,7 @@ public class IndexingServiceImpl implements IndexingService{
     @Override
     public IndexingResponse getIndexing() {
         synchronized (siteEntityController){
-            if(siteEntityController.isIndexing() && !stopper.isStop()){
+            if(!stopper.isStop()){             //   siteEntityController.isIndexing() &&
                 return new IndexingResponseFalse("Индексация уже запущена");
             }
             if(siteEntityController.isIndexing()){
@@ -127,7 +128,7 @@ public class IndexingServiceImpl implements IndexingService{
         int site_id;
         if(oldSite != null){
             // Узнали id сайта, теперь уберем упоминания из lemmas
-            lemmaController.deleteBySiteId(oldSite.getId()); ////////////  НАДО ДОБАВИТЬ @ONDELETE!!!!!!!!!!!
+//            lemmaController.deleteBySiteId(oldSite.getId()); ////////////  НАДО ДОБАВИТЬ @ONDELETE!!!!!!!!!!!
             // А потом и сам сайт - а он каскадом уберет страницы и индексы
             siteEntityController.deleteSiteEntity(oldSite);
         }
@@ -236,20 +237,18 @@ public class IndexingServiceImpl implements IndexingService{
         List<String> lemmasToRemove = increasedLemmas.stream().map(LemmaEntity::getLemma).collect(Collectors.toList());
         lemmasToRemove.forEach(otherLemmaNames::remove);
         // И создаем LemmaEntity's
-        for(String lemma : otherLemmaNames){
-            LemmaEntity lemmaEntity = new LemmaEntity(newSite.getId(), lemma, 1);
+        for (String lemma : otherLemmaNames) {
+            LemmaEntity lemmaEntity = new LemmaEntity(newSite, lemma, 1);
             lemmasToSaveAll.add(lemmaEntity);
         }
         lemmaController.saveAll(lemmasToSaveAll); // Теперь их сохраняем
-        increasedLemmas.addAll(lemmasToSaveAll);  // Складываем все в один лист
-
+         increasedLemmas.addAll(lemmasToSaveAll);  // Складываем все в один лист
         int count = 0;
         for(LemmaEntity le : increasedLemmas){
             if(le == null){
                 count++;
             }
         }
-
         // Собираем лист индексов и потом его сохраняем
         for(LemmaEntity le : increasedLemmas){
             indexList.add(new IndexEntity(newPage, le.getId(), lemmas.get(le.getLemma())));
@@ -257,64 +256,6 @@ public class IndexingServiceImpl implements IndexingService{
 
         indexController.saveAll(indexList);
         lemmasToRemove.clear(); ///////////////////////////////// На всякий
-
-
-
-
-//        // Третий вариант с двумя мультиинсертами
-//        Map<LemmaEntity, Integer> lemmaMap = new HashMap<>();
-//        List<LemmaEntity> lemmasToSaveAll = new ArrayList<>();
-//        List<IndexEntity> indexList = new ArrayList<>();
-//        for(String lemma : lemmas.keySet()){ //  Для каждой леммы:
-//
-//            // ТУТ надо подумать, как еще сделать мульти получение лемма id
-//
-//            Integer lemma_id = lemmaController.getLemmaId(newSite.getId(), lemma);  // Получаем id, если есть
-//            LemmaEntity lemmaEntity;
-//            if(lemma_id == null){
-//                lemmaEntity = new LemmaEntity(newSite.getId(), lemma, 1);
-//                lemmasToSaveAll.add(lemmaEntity);
-//            } else {
-//                lemmaEntity = lemmaController.increaseFrequency(lemma_id);///////// Или повысили frequency ВЕРНУТЬ, чтобы не извлекать
-//            }
-//            lemmaMap.put(lemmaEntity, lemmas.get(lemma));
-//        }
-//        lemmaController.saveAll(lemmasToSaveAll);
-//        for(LemmaEntity le : lemmaMap.keySet()){
-//            indexList.add(new IndexEntity(newPage, le.getId(), lemmaMap.get(le)));
-//        }
-//        indexController.saveAll(indexList);
-
-//        // Второй вариант с индекс-мультиИнсерт
-//        List<IndexEntity> indexList = new ArrayList<>();
-//        for(String lemma : lemmas.keySet()){
-//            Integer lemma_id = lemmaController.getLemmaId(newSite.getId(), lemma);  // Получаем id, если есть
-//            //int frequency = 1;////////////////////////
-//            if(lemma_id == null){
-//                LemmaEntity lemmaEntity = new LemmaEntity(newSite.getId(), lemma, 1);
-//                lemma_id = lemmaController.addLemma(lemmaEntity);  //  Или добавили новую
-//            } else {
-//                lemmaController.increaseFrequency(lemma_id);  ///////// Или повысили frequency ВЕРНУТЬ, чтобы не извлекать
-//            }
-//            IndexEntity indexEntity = new IndexEntity(newPage, lemma_id, lemmas.get(lemma));
-//            indexList.add(indexEntity);
-//        }
-//        indexController.saveAll(indexList);
-
-//          Начальный вариант
-//        for(String lemma : lemmas.keySet()){
-//            Integer lemma_id = lemmaController.getLemmaId(newSite.getId(), lemma);  // Получаем id, если есть
-//            if(lemma_id == null){
-//                LemmaEntity lemmaEntity = new LemmaEntity(newSite.getId(), lemma, 1);
-//                lemma_id = lemmaController.addLemma(lemmaEntity);  //  Или добавили новую
-//            } else {
-//                lemmaController.increaseFrequency(lemma_id);  // Или повысили frequency
-//            }
-//            //  Теперь будем заниматься индексом
-//            IndexEntity indexEntity = new IndexEntity(newPage, lemma_id, lemmas.get(lemma));
-//            indexController.addIndex(indexEntity);
-//        }
-
     }
     public String getMessageByStatusCode(int status_code){
         String message;
@@ -383,6 +324,65 @@ public class IndexingServiceImpl implements IndexingService{
         }
     }
 
+//    public void newSitePagesAdder(SiteEntity newSite) throws IOException {  // БОЛЕЕ БЫСТРЫЙ ВАРИАНТ
+//        List<String> result = new ArrayList<>();                            // требует синхронизации блока вставки в lemmas в lemmasAndIndexesAdder
+//        Set<String> total = new HashSet<>();
+//        String baseUrl = newSite.getUrl();
+//        int maxThreadsNumber = 4;
+//        result.add(baseUrl);
+//        total.add(baseUrl);
+//        RecursiveIndexerParams params = new RecursiveIndexerParams(baseUrl, baseUrl, total, stopper, connectionConfig);
+//        result.addAll(new ForkJoinPool().invoke(new RecursiveIndexer(params)));
+//        AtomicInteger pagesInProcess = new AtomicInteger(0);
+//        AtomicInteger threadsNumber = new AtomicInteger(0);
+//
+//        for (String r : result) { // Для каждой страницы:
+//            if(stopper.isStop()){break;}
+//
+//            pagesInProcess.incrementAndGet(); // ********************
+//            while (threadsNumber.intValue() > maxThreadsNumber){
+//                try {
+//                    Thread.sleep(500);
+//                } catch (InterruptedException e) {
+//                    System.out.println(e.getMessage());
+//                }
+//            }
+//            threadsNumber.incrementAndGet();
+//            if(r.equals(baseUrl)){
+//                pageAdder(r, baseUrl, newSite);
+//                siteEntityController.refreshSiteEntity(newSite.getId());
+//                pagesInProcess.decrementAndGet();
+//                threadsNumber.decrementAndGet();
+//            } else{
+//                long time = Math.round(100 + 50 * Math.random());  // Выдерживаем интервал
+//                try {
+//                    Thread.sleep(time);
+//                } catch (InterruptedException e) {
+//                    System.out.println(e.getMessage());
+//                }
+//                Thread thread = new Thread(()->{
+//
+//                    try {
+//                        pageAdder(r, baseUrl, newSite);
+//                        siteEntityController.refreshSiteEntity(newSite.getId());
+//                    } catch (IOException e) {
+//                        System.out.println("thread failed " + r); // ******************
+//                    }
+//                    pagesInProcess.decrementAndGet();   // *****************
+//                    threadsNumber.decrementAndGet();
+//                });
+//                thread.start();
+//            }
+//        }
+//        while (true){
+//            try {
+//                Thread.sleep(5000);
+//            } catch (InterruptedException e) {
+//                System.out.println(e.getMessage());
+//            }
+//            if(pagesInProcess.intValue() == 0) return;
+//        }
+//    }
 }
 
 

@@ -41,4 +41,8 @@ public class SiteEntity {
     @OneToMany(mappedBy = "id") // Надо ли тут LAZY? Попробовать
 //    @Cascade(org.hibernate.annotations.CascadeType.REMOVE)
     private List<PageEntity> children = new ArrayList<>();
+
+    @OneToMany(mappedBy = "id") // Надо ли тут LAZY? Попробовать
+//    @Cascade(org.hibernate.annotations.CascadeType.REMOVE)
+    private List<LemmaEntity> lemmas = new ArrayList<>();
 }

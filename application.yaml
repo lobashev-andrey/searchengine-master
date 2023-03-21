@@ -28,10 +28,10 @@ indexing-settings:
 #      name: Дом Булгакова
 #    - url: https://skillbox.ru/media/code/
 #      name: SomeStr
-    - url: http://radiomv.ru/actions/
-      name: RadioMV
-#    - url: https://www.svetlovka.ru/
-#      name: Библиотека им.Светлова
+#    - url: http://radiomv.ru/actions/
+#      name: RadioMV
+    - url: https://www.svetlovka.ru/
+      name: Библиотека им.Светлова
 #    - url: https://www.dextra.ru/services/seo/
 #      name: Декстра
 

@@ -132,9 +132,14 @@ public class SearchServiceImpl implements SearchService{
         for(Integer f : finalOrderOfPages){
             if(count < offset) continue;
             count++;
-            if(count + offset % limit == 0){ break; }
+
             SinglePageSearchData pageData = getPageData(f, pageAndRank, lemmas);
             totalData.add(pageData);
+
+            if((count + offset) % limit == 0){
+                System.out.println("COUNT " + count + " " + offset);
+                break;
+            }
         }
         searchResponse.setData(totalData);
         return searchResponse;

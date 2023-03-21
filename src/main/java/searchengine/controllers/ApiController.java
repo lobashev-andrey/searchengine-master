@@ -1,6 +1,7 @@
 package searchengine.controllers;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import searchengine.dto.indexing.IndexingResponse;
 import searchengine.dto.search.SearchResponse;
@@ -46,7 +47,7 @@ public class ApiController {
     public ResponseEntity<SearchResponse> search(@RequestParam String query,
                                                  @RequestParam(defaultValue = "All sites") String site,
                                                  @RequestParam(defaultValue = "0") int offset,
-                                                 @RequestParam(defaultValue = "20") int limit){    // offset, limit ?????????
+                                                 @RequestParam(defaultValue = "20") int limit){
         return ResponseEntity.ok(searchService.getSearch(query, site, offset, limit));
     }
 }

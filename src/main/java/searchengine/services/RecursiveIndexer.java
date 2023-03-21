@@ -36,21 +36,15 @@ public class RecursiveIndexer extends RecursiveTask<List<String>> {
         List<RecursiveIndexer> pageConstructors = new ArrayList<>(); // Создаем список задач
         List<String> children = null;
         if(stopper.isStop()){
-            System.out.println("STOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOP");
             return new ArrayList<>();
         }
-        try {
-            children = getChildren();
-            for(String child : children) {
-                RecursiveIndexerParams params = new RecursiveIndexerParams(child, baseUrl, total, stopper, connectionConfig);
-                RecursiveIndexer rec = new RecursiveIndexer(params);
-                rec.fork();
-                pageConstructors.add(rec);
-            }
-        } catch (HttpStatusException h) {
-            System.out.println("IOException RecursiveIndexer: " + address + " " + h.getStatusCode() + " " + h.getMessage());
-        }  catch (IOException e) {
-            System.out.println("IOException RecursiveIndexer: " + address + e.getMessage());
+
+        children = getChildren();
+        for(String child : children) {
+            RecursiveIndexerParams params = new RecursiveIndexerParams(child, baseUrl, total, stopper, connectionConfig);
+            RecursiveIndexer rec = new RecursiveIndexer(params);
+            rec.fork();
+            pageConstructors.add(rec);
         }
 
         for (RecursiveIndexer task : pageConstructors) {
@@ -69,13 +63,20 @@ public class RecursiveIndexer extends RecursiveTask<List<String>> {
         return children;
     }
 
-    public List<String> getChildren() throws IOException {
+    public List<String> getChildren(){
         List<String> children = new ArrayList<>();
-        Connection.Response response = Jsoup.connect(address)
-                .userAgent(connectionConfig.getUserAgent())
-                .referrer(connectionConfig.getReferer())
-                .execute();
-        Document doc = response.parse();
+        Connection.Response response = null;
+        Document doc = null;
+        try {
+            response = Jsoup.connect(address)
+                    .userAgent(connectionConfig.getUserAgent())
+                    .referrer(connectionConfig.getReferer())
+                    .execute();
+            doc = response.parse();
+        } catch (IOException e) {
+            System.out.println("RecursiveIndexer: getChildren: " + e.getMessage());
+            return children;
+        }
         Elements elements = doc.select("a");
         for(Element el : elements){
             if(el.hasAttr("onclick")){continue;}
