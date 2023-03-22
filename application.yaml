@@ -1,0 +1,32 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    username: root
+    password: andrey4976root_A
+    url: jdbc:mysql://localhost:3306/search_engine?useSSL=false&requireSSL=false&allowPublicKeyRetrieval=true&useUnicode=yes&characterEncoding=UTF-8
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        jdbc:
+          batch_size: 100
+#        order_inserts: true
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+indexing-settings:
+  sites:
+    - url: https://nikoartgallery.com/news/all
+      name: Niko art gallery
+    - url: https://www.svetlovka.ru/
+      name: Библиотека им.Светлова
+
+  userAgent:
+    Mozilla/5.0 (Windows; U; WindowsNT 5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6
+  referer:
+    http://www.google.com
+  snippetCoreLength:
+    200

@@ -6,7 +6,9 @@ import org.springframework.web.bind.annotation.*;
 import searchengine.model.LemmaEntity;
 import searchengine.repositories.LemmaRepository;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
 @Controller
 @RequestMapping("/lemmas")
@@ -49,10 +51,26 @@ public class LemmaController {
             le.setFrequency(le.getFrequency() + 1);
             list.add(le);
         }
-        System.out.println("Controller      -        lemmaNames.length: " + lemmaNames.length + "  list.size: " + list.size());
         lemmaRepository.saveAll(list);
         return list;
     }
+
+    @PostMapping("/saveAll")
+    public void saveAll(List<LemmaEntity> list){
+        lemmaRepository.saveAll(list);
+    }
+
+    @PostMapping("/{id}")
+    public void decreaseFrequency(@PathVariable int id){
+        Optional<LemmaEntity> optional = lemmaRepository.findById(id);
+        if(optional.isPresent()){
+            LemmaEntity lem = optional.get();
+            lem.setFrequency(lem.getFrequency() - 1);
+            lemmaRepository.save(lem);
+        }
+    }
+
+
 
 
     @PutMapping("/")
@@ -65,15 +83,6 @@ public class LemmaController {
             lemmaRepository.save(lem);
         }
         return lem;
-    }
-    @PostMapping("/{id}")
-    public void decreaseFrequency(@PathVariable int id){
-        Optional<LemmaEntity> optional = lemmaRepository.findById(id);
-        if(optional.isPresent()){
-            LemmaEntity lem = optional.get();
-            lem.setFrequency(lem.getFrequency() - 1);
-            lemmaRepository.save(lem);
-        }
     }
 
     @PostMapping("/")
@@ -88,10 +97,11 @@ public class LemmaController {
         lemmaRepository.deleteAllById(iterable);
     }
 
-    @PostMapping("/saveAll")
-    public void saveAll(List<LemmaEntity> list){
-        lemmaRepository.saveAll(list);
-    }
+
+
+
+
+
 
 
 }

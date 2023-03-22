@@ -48,7 +48,6 @@ public class SearchServiceImpl implements SearchService{
             }
             lemmas = queryToLemmaList(query); // .replace("ё", "е").replace('Ё', 'Е')
 
-
             if(lemmas.size() == 0){
                 throw new WrongQueryFormatException("В базе отсутствуют предложенные в запросе слова");
             }
@@ -163,8 +162,8 @@ public class SearchServiceImpl implements SearchService{
         pageData.setSnippet(snippet);
         return pageData;
     }
-    public String snippetMaker(String content, List<String> lemmas){   //  (Document doc, List<String> lemmas)
-        String pageText = getTextOnlyFromHtmlText(content);     //  (doc.html())
+    public String snippetMaker(String content, List<String> lemmas){
+        String pageText = getTextOnlyFromHtmlText(content);
         String rawFragment = "";
         try {
             rawFragment =  parser.getFragmentWithAllLemmas(pageText, lemmas);
@@ -180,16 +179,14 @@ public class SearchServiceImpl implements SearchService{
         return htmlText;
     }
     public Integer[] getSitesWhereToSearch(String site) throws NotIndexedException {
-        // Это должны быть проиндексированные сайты, по которым надо искать
         List<SiteEntity> whereSearch = new ArrayList<>();
         if(!site.equals("All sites")) {
             whereSearch.add(siteEntityController.getSiteEntityByUrl(site));
         } else {
             whereSearch.addAll(siteEntityController.list());
         }
-        whereSearch = whereSearch.stream().filter(a->a.getStatus().equals(Status.INDEXED)).collect(Collectors.toList());
         if(whereSearch.size() == 0){
-            throw new NotIndexedException("Указанного сайта(ов) нет в списке проиндексированных");
+            throw new NotIndexedException("Указанного сайта(ов) нет в числе проиндексированных");
         }
         return whereSearch.stream().map(SiteEntity::getId).toArray(Integer[]::new);
     }

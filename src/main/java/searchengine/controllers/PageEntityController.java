@@ -16,7 +16,6 @@ public class PageEntityController {
     @Autowired
     PageEntityRepository pageEntityRepository;
 
-
     @PostMapping("/")
     public int addPageEntity(PageEntity pageEntity){
         pageEntityRepository.save(pageEntity);
@@ -26,14 +25,6 @@ public class PageEntityController {
     @GetMapping("/")
     public PageEntity findBySiteIdAndPath(int site_id, String url){
         return pageEntityRepository.findBySiteIdAndPath(site_id, url);
-    }
-
-    @GetMapping("/{one_site_id}")
-    public List<Integer>  getPagesBySiteId(@PathVariable int one_site_id){
-        List<Integer> list = new ArrayList<>();
-        Iterable<Integer> iterable = pageEntityRepository.getPagesBySiteId(one_site_id);
-        iterable.forEach(list::add);
-        return list;
     }
 
     @GetMapping("/countAll")
@@ -56,5 +47,17 @@ public class PageEntityController {
     public void deletePageBySiteIdAndPath(int site_id, String url){
         PageEntity pageEntity = pageEntityRepository.findBySiteIdAndPath(site_id, url);
         pageEntityRepository.delete(pageEntity);
+    }
+
+
+
+
+
+    @GetMapping("/{one_site_id}")
+    public List<Integer>  getPagesBySiteId(@PathVariable int one_site_id){
+        List<Integer> list = new ArrayList<>();
+        Iterable<Integer> iterable = pageEntityRepository.getPagesBySiteId(one_site_id);
+        iterable.forEach(list::add);
+        return list;
     }
 }

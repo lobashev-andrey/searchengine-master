@@ -17,7 +17,6 @@ import java.util.stream.Collectors;
 
 @Getter
 public class TextLemmasParser {
-//    private final SnippetParams snippetParams;
 
     public String htmlTagsRemover(String text){
         Pattern p = Pattern.compile("<script.+?/script>|<.+?>");

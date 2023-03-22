@@ -3,7 +3,6 @@ package searchengine.model;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.Cascade;
 
 import javax.persistence.*;
 import java.util.ArrayList;
@@ -36,13 +35,9 @@ public class SiteEntity {
     @Column(columnDefinition = "VARCHAR(255)", nullable = false)
     private String name;
 
-
-
-    @OneToMany(mappedBy = "id") // Надо ли тут LAZY? Попробовать
-//    @Cascade(org.hibernate.annotations.CascadeType.REMOVE)
+    @OneToMany(mappedBy = "id")
     private List<PageEntity> children = new ArrayList<>();
 
-    @OneToMany(mappedBy = "id") // Надо ли тут LAZY? Попробовать
-//    @Cascade(org.hibernate.annotations.CascadeType.REMOVE)
+    @OneToMany(mappedBy = "id")
     private List<LemmaEntity> lemmas = new ArrayList<>();
 }

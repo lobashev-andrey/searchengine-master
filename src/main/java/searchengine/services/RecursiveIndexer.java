@@ -1,9 +1,7 @@
 package searchengine.services;
 
 
-import lombok.AllArgsConstructor;
 import org.jsoup.Connection;
-import org.jsoup.HttpStatusException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -11,7 +9,9 @@ import org.jsoup.select.Elements;
 import searchengine.config.ConnectionConfig;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.RecursiveTask;
 
 
@@ -33,7 +33,7 @@ public class RecursiveIndexer extends RecursiveTask<List<String>> {
 
     @Override
     protected List compute() {
-        List<RecursiveIndexer> pageConstructors = new ArrayList<>(); // Создаем список задач
+        List<RecursiveIndexer> pageConstructors = new ArrayList<>();
         List<String> children = null;
         if(stopper.isStop()){
             return new ArrayList<>();
@@ -48,13 +48,13 @@ public class RecursiveIndexer extends RecursiveTask<List<String>> {
         }
 
         for (RecursiveIndexer task : pageConstructors) {
-            long time = Math.round(100 + 50 * Math.random());   //Math.round(500 + 4500 * Math.random());
+            long time = Math.round(100 + 50 * Math.random());
             try {
                 Thread.sleep(time);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            children.addAll(task.join());    // Добавляем результаты каждого ребенка
+            children.addAll(task.join());
         }
         if(stopper.isStop()){
             return new ArrayList<>();
@@ -74,7 +74,6 @@ public class RecursiveIndexer extends RecursiveTask<List<String>> {
                     .execute();
             doc = response.parse();
         } catch (IOException e) {
-            System.out.println("RecursiveIndexer: getChildren: " + e.getMessage());
             return children;
         }
         Elements elements = doc.select("a");

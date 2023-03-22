@@ -19,8 +19,6 @@ public class LemmaEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
 
-//    @Column(columnDefinition = "INT", nullable = false)
-//    private int site_id;
     @ManyToOne(cascade = {CascadeType.MERGE}, optional = false)
     @JoinColumn(name = "site_id", nullable = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
