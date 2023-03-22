@@ -18,6 +18,7 @@ import searchengine.dto.indexing.IndexingResponseFalse;
 import searchengine.dto.indexing.IndexingResponseTrue;
 import searchengine.model.*;
 
+import javax.transaction.UserTransaction;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ForkJoinPool;
@@ -35,6 +36,31 @@ public class IndexingServiceImpl implements IndexingService{
     private final ConnectionConfig connectionConfig;
     private final Stopper stopper = new Stopper();
 
+
+    public void sitesListIndexer(AtomicInteger numOfIndexingSites){
+        List<Site> sitesForIndexing = sites.getSites();
+        numOfIndexingSites.set(sitesForIndexing.size());
+        for(Site s : sitesForIndexing){
+            Thread thread = new Thread(() -> {
+
+                urlPlusSlash(s);
+                cleanTablesOfSite(s);
+                SiteEntity newSite = createIndexingSiteEntity(s);
+                boolean error = false;
+                try{
+                    newSitePagesAdder(newSite);
+                } catch (Exception ex){
+                    setLastError(newSite, ex.getMessage());
+                    error = true;
+                }
+                statusChanger(newSite, (stopper.isStop() || error) ? Status.FAILED : Status.INDEXED);
+
+                numOfIndexingSites.decrementAndGet();
+            });
+            thread.start();
+        }
+    }
+
     @Override
     public IndexingResponse getIndexing() {
         synchronized (siteEntityController){
@@ -49,24 +75,16 @@ public class IndexingServiceImpl implements IndexingService{
             }
             stopper.setStop(false);
         }
-        List<Site> sitesForIndexing = sites.getSites();
-        for(Site s : sitesForIndexing){
-            Thread thread = new Thread(() -> {
-                urlPlusSlash(s);
-                cleanTablesOfSite(s);
-                SiteEntity newSite = createIndexingSiteEntity(s);
-                boolean error = false;
-                try{
-                    newSitePagesAdder(newSite);            // ЕСЛИ БРОСИЛ ОШИБКУ, поставить last_error
-                } catch (Exception ex){
-                    setLastError(newSite, ex.getMessage());
-                    error = true;
-                }
-                statusChanger(newSite, (stopper.isStop() || error) ? Status.FAILED : Status.INDEXED);
-            });
-            thread.start();
+        AtomicInteger numOfIndexingSites = new AtomicInteger();
+        sitesListIndexer(numOfIndexingSites);
+        while(numOfIndexingSites.intValue() != 0){
+            try {
+                Thread.sleep(5000);
+            } catch (InterruptedException e) {
+                System.out.println(e.getMessage());
+            }
         }
-        stopIndexing();
+        stopper.setStop(true);
         return new IndexingResponseTrue();
     }
     @Override
@@ -242,20 +260,18 @@ public class IndexingServiceImpl implements IndexingService{
             lemmasToSaveAll.add(lemmaEntity);
         }
         lemmaController.saveAll(lemmasToSaveAll); // Теперь их сохраняем
-         increasedLemmas.addAll(lemmasToSaveAll);  // Складываем все в один лист
-        int count = 0;
-        for(LemmaEntity le : increasedLemmas){
-            if(le == null){
-                count++;
-            }
-        }
+        increasedLemmas.addAll(lemmasToSaveAll);  // Складываем все в один лист
+//        int count = 0;
+//        for(LemmaEntity le : increasedLemmas){
+//            if(le == null){
+//                count++;
+//            }
+//        }
         // Собираем лист индексов и потом его сохраняем
         for(LemmaEntity le : increasedLemmas){
             indexList.add(new IndexEntity(newPage, le.getId(), lemmas.get(le.getLemma())));
         }
-
         indexController.saveAll(indexList);
-        lemmasToRemove.clear(); ///////////////////////////////// На всякий
     }
     public String getMessageByStatusCode(int status_code){
         String message;

@@ -137,7 +137,6 @@ public class SearchServiceImpl implements SearchService{
             totalData.add(pageData);
 
             if((count + offset) % limit == 0){
-                System.out.println("COUNT " + count + " " + offset);
                 break;
             }
         }
@@ -153,23 +152,19 @@ public class SearchServiceImpl implements SearchService{
         pageData.setSiteName(currentSite.getName());
         pageData.setUri(currentPage.getPath());
 
-        Document doc = null;                                         // А ЭТО НАДО ЛИ? У НАС ЖЕ ЕСТЬ content
-        try {                                                        //
-            doc = Jsoup.connect(baseUrl + currentPage.getPath()).get(); //
-        } catch (IOException e) {                                     //
-            throw new RuntimeException(e);                            //
-        }
-
+        String content = currentPage.getContent();
+        Document doc = Jsoup.parse(content);
         Elements elements = doc.select("title");
         String title = elements.text();
+
         pageData.setTitle(title);
         pageData.setRelevance(pageAndRank.get(f));
-        String snippet = snippetMaker(doc, lemmas);
+        String snippet = snippetMaker(content, lemmas);
         pageData.setSnippet(snippet);
         return pageData;
     }
-    public String snippetMaker(Document doc, List<String> lemmas){
-        String pageText = getTextOnlyFromHtmlText(doc.html());
+    public String snippetMaker(String content, List<String> lemmas){   //  (Document doc, List<String> lemmas)
+        String pageText = getTextOnlyFromHtmlText(content);     //  (doc.html())
         String rawFragment = "";
         try {
             rawFragment =  parser.getFragmentWithAllLemmas(pageText, lemmas);
