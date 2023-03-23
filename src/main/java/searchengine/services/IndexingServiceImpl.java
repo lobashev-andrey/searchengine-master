@@ -1,6 +1,13 @@
 package searchengine.services;
 
 import lombok.RequiredArgsConstructor;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.Transaction;
+import org.hibernate.boot.internal.MetadataImpl;
+import org.hibernate.boot.spi.InFlightMetadataCollector;
+import org.hibernate.boot.spi.MetadataImplementor;
+import org.hibernate.internal.SessionFactoryImpl;
 import org.jsoup.Connection;
 import org.jsoup.HttpStatusException;
 import org.jsoup.Jsoup;
@@ -18,6 +25,10 @@ import searchengine.dto.indexing.IndexingResponseFalse;
 import searchengine.dto.indexing.IndexingResponseTrue;
 import searchengine.model.*;
 
+import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.Persistence;
+import javax.persistence.PersistenceContext;
 import javax.transaction.UserTransaction;
 import java.io.IOException;
 import java.util.*;
@@ -25,6 +36,7 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+@PersistenceContext
 @Service
 @RequiredArgsConstructor
 public class IndexingServiceImpl implements IndexingService{
@@ -235,23 +247,117 @@ public class IndexingServiceImpl implements IndexingService{
         } catch (IOException e) {
             throw new IOException("Ошибка в lemmasAndIndexesAdder" + e.getMessage());
         }
-        List<LemmaEntity> lemmasToSaveAll = new ArrayList<>();
-        List<IndexEntity> indexList = new ArrayList<>();
         List<LemmaEntity> increasedLemmas = lemmaController.getLemmasBySiteIdAndLemmaNameAndIncreaseFrequency(newSite.getId(), lemmas.keySet().toArray(String[]::new));
         Set<String> otherLemmaNames = new HashSet<>(lemmas.keySet());
         List<String> lemmasToRemove = increasedLemmas.stream().map(LemmaEntity::getLemma).collect(Collectors.toList());
         lemmasToRemove.forEach(otherLemmaNames::remove);
+
+
+//        for (String lemma : otherLemmaNames) {
+//            LemmaEntity lemmaEntity = new LemmaEntity(newSite, lemma, 1);
+//            lemmasToSaveAll.add(lemmaEntity);
+//        }
+//        lemmaController.saveAll(lemmasToSaveAll);
+//
+//        lemmasToSaveAll = new ArrayList<>();;
+        List<LemmaEntity> lemmasToSaveAll = lemmasSaver(newSite, otherLemmaNames);
+
+        increasedLemmas.addAll(lemmasToSaveAll);
+
+        indexesSaver(newPage, lemmas, increasedLemmas);
+
+        // 770 lemmas, 1027 indexes
+//        for(LemmaEntity le : increasedLemmas){
+//            indexList.add(new IndexEntity(newPage, le.getId(), lemmas.get(le.getLemma())));
+//        }
+//        // ***************** INDEXES ADDER *********************
+//        indexController.saveAll(indexList);
+
+
+//
+//        EntityManagerFactory entityManagerFactory = null;
+//        try {
+//             entityManagerFactory = Persistence.createEntityManagerFactory("IndexEntity");
+//        } catch (Exception ex){
+//            System.out.println(ex.getMessage());
+//        }
+//        EntityManager entityManager = entityManagerFactory.createEntityManager();
+//        Session session = entityManager.unwrap(Session.class);
+//        Transaction tx = session.beginTransaction();
+//        int count = 0;
+//        for(LemmaEntity le : increasedLemmas){
+//            count++;
+//            IndexEntity ie = new IndexEntity(newPage, le.getId(), lemmas.get(le.getLemma()));
+//            session.save(ie);
+//            if (count % 100 == 0) {
+//                System.out.println("size " + count + "   " + increasedLemmas.size());
+//                session.flush();
+//                session.clear();
+//            }
+//        }
+//        System.out.println("size " + count + "   " + increasedLemmas.size());
+//        tx.commit();
+//        session.close();
+//        System.out.println("after session.close");
+    }
+
+    public List<LemmaEntity> lemmasSaver(SiteEntity newSite, Set<String> otherLemmaNames) throws IOException {
+        List<LemmaEntity> lemmasToSaveAll = new ArrayList<>();
+        EntityManagerFactory entityManagerFactory = null;
+        try {
+            entityManagerFactory = Persistence.createEntityManagerFactory("PageEntity");
+        } catch (Exception ex){
+            System.out.println(ex.getMessage());
+            throw new IOException();
+        }
+        EntityManager entityManager = entityManagerFactory.createEntityManager();
+        Session session = entityManager.unwrap(Session.class);
+        Transaction tx = session.beginTransaction();
+        int count = 0;
         for (String lemma : otherLemmaNames) {
+            count++;
             LemmaEntity lemmaEntity = new LemmaEntity(newSite, lemma, 1);
             lemmasToSaveAll.add(lemmaEntity);
+            session.save(lemmaEntity);
+            if (count % 100 == 0) {
+                System.out.println("**** size lemmas " + count + "   " + otherLemmaNames.size());
+                session.flush();
+                session.clear();
+            }
         }
-        lemmaController.saveAll(lemmasToSaveAll);
-        increasedLemmas.addAll(lemmasToSaveAll);
-        for(LemmaEntity le : increasedLemmas){
-            indexList.add(new IndexEntity(newPage, le.getId(), lemmas.get(le.getLemma())));
-        }
-        indexController.saveAll(indexList);
+        tx.commit();
+        session.close();
+        System.out.println("**** after lemma session.close");
+        return lemmasToSaveAll;
     }
+
+    public void indexesSaver(PageEntity newPage, HashMap<String, Integer> lemmas, List<LemmaEntity> increasedLemmas) throws IOException {
+        EntityManagerFactory entityManagerFactory = null;
+        try {
+            entityManagerFactory = Persistence.createEntityManagerFactory("IndexEntity");
+        } catch (Exception ex){
+            System.out.println(ex.getMessage());
+            throw new IOException();
+        }
+        EntityManager entityManager = entityManagerFactory.createEntityManager();
+        Session session = entityManager.unwrap(Session.class);
+        Transaction tx = session.beginTransaction();
+        int count = 0;
+        for(LemmaEntity le : increasedLemmas){
+            count++;
+            IndexEntity ie = new IndexEntity(newPage, le.getId(), lemmas.get(le.getLemma()));
+            session.save(ie);
+            if (count % 100 == 0) {
+                System.out.println("size " + count + "   " + increasedLemmas.size());
+                session.flush();
+                session.clear();
+            }
+        }
+        tx.commit();
+        session.close();
+        System.out.println("after session.close");
+    }
+
     public String getMessageByStatusCode(int status_code){
         String message;
         switch(status_code){

@@ -19,10 +19,12 @@ spring:
 
 indexing-settings:
   sites:
-    - url: https://nikoartgallery.com/news/all
-      name: Niko art gallery
-    - url: https://www.svetlovka.ru/
-      name: Библиотека им.Светлова
+#    - url: https://nikoartgallery.com/news/all
+#      name: Niko art gallery
+#    - url: https://www.svetlovka.ru/
+#      name: Библиотека им.Светлова
+    - url: http://radiomv.ru/actions/
+      name: RadioMV
 
   userAgent:
     Mozilla/5.0 (Windows; U; WindowsNT 5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6
