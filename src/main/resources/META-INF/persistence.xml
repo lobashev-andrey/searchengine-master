@@ -15,9 +15,9 @@
             <property name="javax.persistence.jdbc.password" value="andrey4976root_A"/>
         </properties>
     </persistence-unit>
-    <persistence-unit name="PageEntity">
+    <persistence-unit name="LemmaEntity">
         <description>SearchEngine</description>
-        <class>searchengine.model.IndexEntity</class>
+        <class>searchengine.model.LemmaEntity</class>
         <exclude-unlisted-classes>false</exclude-unlisted-classes>
         <properties>
             <property name="hibernate.dialect" value="org.hibernate.dialect.MySQL8Dialect"/>
