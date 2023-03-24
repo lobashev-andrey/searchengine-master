@@ -34,7 +34,7 @@ public class SearchServiceImpl implements SearchService{
     private final SiteEntityController siteEntityController;
     private final IndexController indexController;
     private final TextLemmasParser parser = new TextLemmasParser();
-    private final int maxPercentOfPagesForLemma = 70;
+    private final int maxPercentOfPagesForLemma = 30;
 
 
     @Override
@@ -59,7 +59,7 @@ public class SearchServiceImpl implements SearchService{
         } catch (Exception ex) {
             return new SearchResponseFalse(ex.getMessage());
         }
-        ResponseManagerParams params = new ResponseManagerParams(pageAndRank, lemmas, limit, offset);
+        ResponseManagerParams params = new ResponseManagerParams(pageAndRank, lemmas, limit, offset, query);
         return responseManager(params);
     }
     public List<String> getOrderedListOfRareLemmas(List<String> lemmas) throws WrongQueryFormatException {
@@ -121,11 +121,12 @@ public class SearchServiceImpl implements SearchService{
         }
         return pageAndRank;
     }
-    public SearchResponse responseManager(ResponseManagerParams params){
+    public SearchResponse responseManager(ResponseManagerParams params) {
         Map<Integer, Float> pageAndRank = params.getPageAndRank();
-        List<String> lemmas = params.getLemmas();
-        int limit = params.getLimit();
-        int offset = params.getOffset();
+        List<String> lemmas             = params.getLemmas();
+        int limit                       = params.getLimit();
+        int offset                      = params.getOffset();
+        String query                    = params.getQuery();
 
         SearchResponseTrue searchResponse = new SearchResponseTrue();
         searchResponse.setCount(pageAndRank.size());
@@ -139,7 +140,7 @@ public class SearchServiceImpl implements SearchService{
             if(count < offset) continue;
             count++;
 
-            GetPageDataParams getPageDataParams = new GetPageDataParams(page_id, pageAndRank, lemmas);
+            GetPageDataParams getPageDataParams = new GetPageDataParams(page_id, pageAndRank, lemmas, query);
             SinglePageSearchData pageData = getPageData(getPageDataParams);
             totalData.add(pageData);
 
@@ -150,10 +151,11 @@ public class SearchServiceImpl implements SearchService{
         searchResponse.setData(totalData);
         return searchResponse;
     }
-    public SinglePageSearchData getPageData(GetPageDataParams getPageDataParams){
-        int page_id = getPageDataParams.getPage_id();
+    public SinglePageSearchData getPageData(GetPageDataParams getPageDataParams) {
+        int page_id                     = getPageDataParams.getPage_id();
         Map<Integer, Float> pageAndRank = getPageDataParams.getPageAndRank();
-        List<String> lemmas = getPageDataParams.getLemmas();
+        List<String> lemmas             = getPageDataParams.getLemmas();
+        String query                    = getPageDataParams.getQuery();
 
         SinglePageSearchData pageData = new SinglePageSearchData();
         PageEntity currentPage = pageEntityController.getPageEntityById(page_id);
@@ -170,11 +172,16 @@ public class SearchServiceImpl implements SearchService{
 
         pageData.setTitle(title);
         pageData.setRelevance(pageAndRank.get(page_id));
-        String snippet = snippetMaker(content, lemmas);
+        String snippet;
+        try{
+            snippet = snippetMaker(content, lemmas, query);
+        } catch(IOException ex){
+            snippet = "Сбой при парсинге страницы. Сниппет не сформирован";
+        }
         pageData.setSnippet(snippet);
         return pageData;
     }
-    public String snippetMaker(String content, List<String> lemmas){
+    public String snippetMaker(String content, List<String> lemmas, String query) throws IOException {
         String pageText = getTextOnlyFromHtmlText(content);
         String rawFragment = "";
         try {
@@ -182,7 +189,7 @@ public class SearchServiceImpl implements SearchService{
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return parser.boldTagAdder(rawFragment, lemmas);
+        return parser.boldTagAdder(rawFragment, query);
     }
     public String getTextOnlyFromHtmlText(String htmlText){
         Document doc = Jsoup.parse( htmlText );

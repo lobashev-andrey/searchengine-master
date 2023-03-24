@@ -230,7 +230,11 @@ public class IndexingServiceImpl implements IndexingService{
 
         int page_id = pageEntityController.addPageEntity(newPage);
         System.out.println(page_id + " before");
-        lemmasAndIndexesAdder(content, newPage, newSite);
+        try {
+            lemmasAndIndexesAdder(content, newPage, newSite);
+        } catch (IOException e) {
+            throw new IOException("Проблема при парсинге текста страницы");
+        }
         System.out.println(newPage.getId() + " after");
     }
     public void lemmasAndIndexesAdder(String content, PageEntity newPage, SiteEntity newSite) throws IOException {

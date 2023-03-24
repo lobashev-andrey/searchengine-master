@@ -12,4 +12,5 @@ public class GetPageDataParams {
     private int page_id;
     private Map<Integer, Float> pageAndRank;
     private List<String> lemmas;
+    private String query;
 }

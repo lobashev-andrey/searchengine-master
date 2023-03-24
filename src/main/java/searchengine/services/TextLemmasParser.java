@@ -43,7 +43,6 @@ public class TextLemmasParser {
                                     && (a.indexOf("|") > 1 || a.charAt(0) == 'я')
                                     :
                                     !a.startsWith("-") && !a.contains("-|")
-                                    && (a.indexOf("|") > 1 || a.charAt(0) == 'я')
                     )
                     .map(a-> a.substring(0, a.indexOf("|")))
                     .forEach(a->map.put(a, map.containsKey(a) ? map.get(a) + 1 : 1));
@@ -84,7 +83,7 @@ public class TextLemmasParser {
         return m.replaceAll("");
     }
 
-    public String boldTagAdder(String rawFragment, List<String> lemmas){
+    public String boldTagAdder(String rawFragment, String query) throws IOException {
         rawFragment = rawFragment + " ";
         LuceneMorphology luceneMorph = null;
         try {
@@ -102,6 +101,9 @@ public class TextLemmasParser {
             builder.append(rawFragment, afterWord, index);
             List<String> wordBaseForms = luceneMorph.getMorphInfo(lowCaseWord);
             String originalWord = rawFragment.substring(index, index + lowCaseWord.length());
+
+            Set<String> lemmas = lemmasCounter(query, false).keySet();
+
             boolean containsLemma = false;
             for(String s : wordBaseForms){
                 if (lemmas.contains(s.substring(0, s.indexOf("|")))) {

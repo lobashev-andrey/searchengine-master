@@ -13,4 +13,5 @@ public class ResponseManagerParams {
     private List<String> lemmas;
     private int limit;
     private int offset;
+    private String query;
 }
