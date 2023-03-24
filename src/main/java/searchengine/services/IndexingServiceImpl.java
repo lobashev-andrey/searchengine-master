@@ -19,6 +19,7 @@ import searchengine.dto.indexing.IndexingResponse;
 import searchengine.dto.indexing.IndexingResponseFalse;
 import searchengine.dto.indexing.IndexingResponseTrue;
 import searchengine.model.*;
+import searchengine.services.param_files.RecursiveIndexerParams;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
@@ -178,7 +179,7 @@ public class IndexingServiceImpl implements IndexingService{
             }
         }
     }
-    public Connection.Response newResponse(String url, String baseUrl) throws IOException {
+    public Connection.Response getConnectionResponse(String url, String baseUrl) throws IOException {
         Connection.Response response = null;
         int status_code;
         try {
@@ -203,7 +204,7 @@ public class IndexingServiceImpl implements IndexingService{
     public void pageAdder(String url, String baseUrl, SiteEntity newSite) throws IOException {
         Connection.Response response;
         try{
-            response = newResponse(url, baseUrl);
+            response = getConnectionResponse(url, baseUrl);
         } catch (IOException ex){
             String message = ex.getMessage();
             if(message.equals("Это не главная страница")) return;
@@ -234,8 +235,8 @@ public class IndexingServiceImpl implements IndexingService{
     }
     public void lemmasAndIndexesAdder(String content, PageEntity newPage, SiteEntity newSite) throws IOException {
         TextLemmasParser parser = new TextLemmasParser();
-        String text = parser.htmlTagsRemover(content);  // Очистили от тэгов  .replace("ё", "е").replace('Ё', 'Е')
-        HashMap<String, Integer> lemmasQuantityMap = parser.lemmasCounter(text);
+        String text = parser.htmlTagsRemover(content);  // .replace("ё", "е").replace('Ё', 'Е')
+        HashMap<String, Integer> lemmasQuantityMap = parser.lemmasCounter(text, true);
 
         Set<String> totalLemmas = new HashSet<>(lemmasQuantityMap.keySet());
         List<LemmaEntity> increasedLemmas = lemmaController
@@ -250,8 +251,18 @@ public class IndexingServiceImpl implements IndexingService{
         indexesMultiInsert(newPage, lemmasQuantityMap, increasedLemmas);
     }
 
-    public List<LemmaEntity> lemmasMultiInsert(SiteEntity newSite, Set<String> otherLemmaNames){
-        Session session = getSession("LemmaEntity");
+    public Session getSession(EntityManagerFactory entityManagerFactory) throws IOException {
+        EntityManager entityManager;
+        try {entityManager = entityManagerFactory.createEntityManager();
+        }catch (Exception ex){
+            throw new IOException("Ошибка соединения с базой данных");
+        }
+        return entityManager.unwrap(Session.class);
+    }
+
+    public List<LemmaEntity> lemmasMultiInsert(SiteEntity newSite, Set<String> otherLemmaNames) throws IOException {
+        EntityManagerFactory entityManagerFactory = Persistence.createEntityManagerFactory("LemmaEntity");
+        Session session = getSession(entityManagerFactory);
         Transaction tx = session.beginTransaction();
         List<LemmaEntity> lemmasToSaveAll = new ArrayList<>();
         int count = 0;
@@ -260,37 +271,35 @@ public class IndexingServiceImpl implements IndexingService{
             LemmaEntity lemmaEntity = new LemmaEntity(newSite, lemma, 1);
             lemmasToSaveAll.add(lemmaEntity);
             session.save(lemmaEntity);
-            if (count % 100 == 0) {
+            if (count % 50 == 0) {
                 session.flush();
                 session.clear();
             }
         }
         tx.commit();
         session.close();
+        entityManagerFactory.close();
         return lemmasToSaveAll;
     }
 
-    public Session getSession(String entityName){
-        EntityManagerFactory entityManagerFactory = Persistence.createEntityManagerFactory(entityName);
-        EntityManager entityManager = entityManagerFactory.createEntityManager();
-        return entityManager.unwrap(Session.class);
-    }
 
-    public void indexesMultiInsert(PageEntity newPage, Map<String, Integer> lemmasQuantityMap, List<LemmaEntity> increasedLemmas) {
-        Session session = getSession("IndexEntity");
+    public void indexesMultiInsert(PageEntity newPage, Map<String, Integer> lemmasQuantityMap, List<LemmaEntity> increasedLemmas) throws IOException {
+        EntityManagerFactory entityManagerFactory = Persistence.createEntityManagerFactory("IndexEntity");
+        Session session = getSession(entityManagerFactory);
         Transaction tx = session.beginTransaction();
         int count = 0;
         for(LemmaEntity le : increasedLemmas){
             count++;
             IndexEntity ie = new IndexEntity(newPage, le.getId(), lemmasQuantityMap.get(le.getLemma()));
             session.save(ie);
-            if (count % 100 == 0) {
+            if (count % 50 == 0) {
                 session.flush();
                 session.clear();
             }
         }
         tx.commit();
         session.close();
+        entityManagerFactory.close();
     }
 
     public String getMessageByStatusCode(int status_code){

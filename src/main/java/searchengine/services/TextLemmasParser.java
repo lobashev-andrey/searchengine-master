@@ -24,7 +24,7 @@ public class TextLemmasParser {
         return m.replaceAll(" ");
     }
 
-    public HashMap<String, Integer> lemmasCounter(String text) throws IOException {
+    public HashMap<String, Integer> lemmasCounter(String text, boolean serviceWordsRemove) throws IOException {
         LuceneMorphology luceneMorph = new RussianLuceneMorphology();
         HashMap<String, Integer> map = new HashMap<>();
 
@@ -34,10 +34,17 @@ public class TextLemmasParser {
             String word = m.group();
             List<String> wordBaseForms = luceneMorph.getMorphInfo(word);
             wordBaseForms.stream()
-                    .filter(a->!a.contains("СОЮЗ") && !a.contains("ПРЕДЛ")
-                            && !a.contains("ЧАСТ") && !a.contains("МЕЖД")
-                            && !a.startsWith("-") && !a.contains("-|")
-                            && (a.indexOf("|") > 1 || a.charAt(0) == 'я'))
+                    .filter(
+                            a-> serviceWordsRemove
+                                    ?
+                                    !a.contains("СОЮЗ") && !a.contains("ПРЕДЛ")
+                                    && !a.contains("ЧАСТ") && !a.contains("МЕЖД")
+                                    && !a.startsWith("-") && !a.contains("-|")
+                                    && (a.indexOf("|") > 1 || a.charAt(0) == 'я')
+                                    :
+                                    !a.startsWith("-") && !a.contains("-|")
+                                    && (a.indexOf("|") > 1 || a.charAt(0) == 'я')
+                    )
                     .map(a-> a.substring(0, a.indexOf("|")))
                     .forEach(a->map.put(a, map.containsKey(a) ? map.get(a) + 1 : 1));
         }
@@ -83,7 +90,7 @@ public class TextLemmasParser {
         try {
             luceneMorph = new RussianLuceneMorphology();
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            System.out.println(e.getMessage());
         }
         Pattern p = Pattern.compile("[а-яё-]+");
         Matcher m = p.matcher(rawFragment.toLowerCase());
@@ -92,7 +99,7 @@ public class TextLemmasParser {
         while(m.find()){
             String lowCaseWord = m.group();
             int index = m.start();
-            builder.append(rawFragment.substring(afterWord, index));  // Добавили то, что с начала или после предыдущего слова
+            builder.append(rawFragment, afterWord, index);
             List<String> wordBaseForms = luceneMorph.getMorphInfo(lowCaseWord);
             String originalWord = rawFragment.substring(index, index + lowCaseWord.length());
             boolean containsLemma = false;

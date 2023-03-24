@@ -17,12 +17,6 @@ public class LemmaController {
     @Autowired
     LemmaRepository lemmaRepository;
 
-    @GetMapping("/")
-    public Integer getLemmaId(int site_id, String lemma){
-        Optional<Integer> optional = lemmaRepository.getLemmaId(site_id, lemma);
-        return optional.orElse(null);
-    }
-
     @GetMapping("/{id}")
     public int countLemmaBySiteId(@PathVariable int id){
         return lemmaRepository.countLemmaBySiteId(id);
@@ -84,17 +78,21 @@ public class LemmaController {
         }
         return lem;
     }
-
     @PostMapping("/")
     public int addLemma(LemmaEntity lemmaEntity){
         lemmaRepository.save(lemmaEntity);
         return lemmaEntity.getId();
     }
-
     @DeleteMapping("/")
     public void deleteBySiteId(int site_id){
         Iterable<Integer> iterable = lemmaRepository.getLemmaIdBySiteId(site_id);
         lemmaRepository.deleteAllById(iterable);
+    }
+
+    @GetMapping("/")
+    public Integer getLemmaId(int site_id, String lemma){
+        Optional<Integer> optional = lemmaRepository.getLemmaId(site_id, lemma);
+        return optional.orElse(null);
     }
 
 

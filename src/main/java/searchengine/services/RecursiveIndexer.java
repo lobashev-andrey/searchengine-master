@@ -7,6 +7,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import searchengine.config.ConnectionConfig;
+import searchengine.services.param_files.RecursiveIndexerParams;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -32,14 +33,14 @@ public class RecursiveIndexer extends RecursiveTask<List<String>> {
 
 
     @Override
-    protected List compute() {
+    protected List<String> compute() {
         List<RecursiveIndexer> pageConstructors = new ArrayList<>();
-        List<String> children = null;
+
         if(stopper.isStop()){
             return new ArrayList<>();
         }
 
-        children = getChildren();
+        List<String> children = getChildren();
         for(String child : children) {
             RecursiveIndexerParams params = new RecursiveIndexerParams(child, baseUrl, total, stopper, connectionConfig);
             RecursiveIndexer rec = new RecursiveIndexer(params);
@@ -65,10 +66,9 @@ public class RecursiveIndexer extends RecursiveTask<List<String>> {
 
     public List<String> getChildren(){
         List<String> children = new ArrayList<>();
-        Connection.Response response = null;
-        Document doc = null;
+        Document doc;
         try {
-            response = Jsoup.connect(address)
+            Connection.Response response = Jsoup.connect(address)
                     .userAgent(connectionConfig.getUserAgent())
                     .referrer(connectionConfig.getReferer())
                     .execute();

@@ -19,7 +19,8 @@ import searchengine.exceptions.NotIndexedException;
 import searchengine.exceptions.WrongQueryFormatException;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
-import searchengine.model.Status;
+import searchengine.services.param_files.GetPageDataParams;
+import searchengine.services.param_files.ResponseManagerParams;
 
 import java.io.IOException;
 import java.util.*;
@@ -58,7 +59,8 @@ public class SearchServiceImpl implements SearchService{
         } catch (Exception ex) {
             return new SearchResponseFalse(ex.getMessage());
         }
-        return responseManager(pageAndRank, lemmas, limit, offset);
+        ResponseManagerParams params = new ResponseManagerParams(pageAndRank, lemmas, limit, offset);
+        return responseManager(params);
     }
     public List<String> getOrderedListOfRareLemmas(List<String> lemmas) throws WrongQueryFormatException {
         Map<String, Integer> lemmaToAmountOfPages = new HashMap<>();
@@ -98,7 +100,7 @@ public class SearchServiceImpl implements SearchService{
     public List<String> queryToLemmaList(String query){
         List<String> lemmas;
         try {
-            lemmas = new ArrayList<>(parser.lemmasCounter(query).keySet());
+            lemmas = new ArrayList<>(parser.lemmasCounter(query, true).keySet());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -119,7 +121,12 @@ public class SearchServiceImpl implements SearchService{
         }
         return pageAndRank;
     }
-    public SearchResponse responseManager(Map<Integer, Float> pageAndRank, List<String> lemmas, int limit, int offset){
+    public SearchResponse responseManager(ResponseManagerParams params){
+        Map<Integer, Float> pageAndRank = params.getPageAndRank();
+        List<String> lemmas = params.getLemmas();
+        int limit = params.getLimit();
+        int offset = params.getOffset();
+
         SearchResponseTrue searchResponse = new SearchResponseTrue();
         searchResponse.setCount(pageAndRank.size());
         List<SinglePageSearchData> totalData = new ArrayList<>();
@@ -128,11 +135,12 @@ public class SearchServiceImpl implements SearchService{
                 .reversed()).collect(Collectors.toList());
 
         int count = 0;
-        for(Integer f : finalOrderOfPages){
+        for(Integer page_id : finalOrderOfPages){
             if(count < offset) continue;
             count++;
 
-            SinglePageSearchData pageData = getPageData(f, pageAndRank, lemmas);
+            GetPageDataParams getPageDataParams = new GetPageDataParams(page_id, pageAndRank, lemmas);
+            SinglePageSearchData pageData = getPageData(getPageDataParams);
             totalData.add(pageData);
 
             if((count + offset) % limit == 0){
@@ -142,9 +150,13 @@ public class SearchServiceImpl implements SearchService{
         searchResponse.setData(totalData);
         return searchResponse;
     }
-    public SinglePageSearchData getPageData(int f, Map<Integer, Float> pageAndRank, List<String> lemmas){
+    public SinglePageSearchData getPageData(GetPageDataParams getPageDataParams){
+        int page_id = getPageDataParams.getPage_id();
+        Map<Integer, Float> pageAndRank = getPageDataParams.getPageAndRank();
+        List<String> lemmas = getPageDataParams.getLemmas();
+
         SinglePageSearchData pageData = new SinglePageSearchData();
-        PageEntity currentPage = pageEntityController.getPageEntityById(f);
+        PageEntity currentPage = pageEntityController.getPageEntityById(page_id);
         SiteEntity currentSite = currentPage.getSiteEntity();
         String baseUrl = currentSite.getUrl().substring(0, currentSite.getUrl().length() - 1);
         pageData.setSite(baseUrl);
@@ -157,7 +169,7 @@ public class SearchServiceImpl implements SearchService{
         String title = elements.text();
 
         pageData.setTitle(title);
-        pageData.setRelevance(pageAndRank.get(f));
+        pageData.setRelevance(pageAndRank.get(page_id));
         String snippet = snippetMaker(content, lemmas);
         pageData.setSnippet(snippet);
         return pageData;

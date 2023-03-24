@@ -1,8 +1,9 @@
-package searchengine.services;
+package searchengine.services.param_files;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import searchengine.config.ConnectionConfig;
+import searchengine.services.Stopper;
 
 import java.util.Set;
 
