@@ -20,49 +20,58 @@
 
 ***
 *** 
-Перед запуском проекта следует создать на локальном сервере SQL базу данных с названием search_engine, <br>
+<h3>Перед запуском проекта </h3>
+1. следует создать на локальном сервере SQL базу данных с названием search_engine, <br>
 задав characterset utf8mb4 и collation utf8mb4_0900_as_ci, <br>
-а в файле application.yaml указать username и password для доступа к серверу. <br>
-В этом же файле пользователь указывает адреса и имена файлов, с которыми он собирается работать, в формате:<br>
-sites:    
-  - url: https://www.playback.ru
-  - name: PlayBack.Ru
-   
-Также есть возможность изменить размер сниппета (фрагмента текста, который будет представлен в результатах поиска)
+2. в файле application.yaml указать данные для доступа к серверу, <br>а также адреса и имена сайтов для индексации и поиска:<br>
+
+<img src="https://github.com/lobashev-andrey/searchengine-master/blob/master/1.png"/>
+
+<img src="https://github.com/lobashev-andrey/searchengine-master/blob/master/2.png"/>
+
+при желании можно изменить размер сниппета <br>(фрагмента текста, который будет представлен в результатах поиска)
+
+<img src="https://github.com/lobashev-andrey/searchengine-master/blob/master/3.png"/>
+
+3. данные для доступа к серверу нужно указать и в файле META-INF/persistence.xml (в двух блоках):
+
+<img src="https://github.com/lobashev-andrey/searchengine-master/blob/master/4.png"/>
+
+
 ***
 *** 
-Для начала работы с приложением нужно запустить файл searchengine.jar,<br> 
-например, с помощью командной строки:  java -jar SearchEngine.jar<br>
+<h3>Для начала работы с приложением </h3>
+нужно запустить файл SearchEngine.jar, например, с помощью командной строки:  java -jar SearchEngine.jar<br>
 После этого интерфейс программы будет доступен в браузере по адресу http://localhost:8080/<br>
 Программа откроется на вкладке статистики: DASHBOARD<br>
 Разумеется, если база данных search_engine пуста, на всех кнопках будет отображаться нулевое количество.
 
-<img src="C:\Users\lobas\Downloads\2023-03-22_18-34-17.png" width="1060"/>
+<img src="https://github.com/lobashev-andrey/searchengine-master/blob/master/11.png"/>
 
 Нажав на имя любого из сайтов можно получить более подробную информацию:
 
-<img src="C:\Users\lobas\Downloads\2023-03-22_18-39-27.png" width="1053"/>
+<img src="https://github.com/lobashev-andrey/searchengine-master/blob/master/12.png"/>
 
 На вкладке MANAGEMENT можно запустить индексацию всех указанных в конфигурационном файле сайтов,
 нажав на кнопку START INDEXING.
 
-<img src="C:\Users\lobas\Downloads\2023-03-22_10-29-15.png" width="1046"/>
+<img src="https://github.com/lobashev-andrey/searchengine-master/blob/master/13.png"/>
 
 Или ввести адрес отдельной страницы, относящейся к одному из этих сайтов, и нажать ADD/UPDATE
 
-<img src="C:\Users\lobas\Downloads\2023-03-22_10-31-12.png" width="1062"/>
+<img src="https://github.com/lobashev-andrey/searchengine-master/blob/master/14.png"/>
 
 В случае, если страница недоступна или не существует, отразится соответствующее сообщение.<br>
 Аналогично будут отображаться и сообщения об ошибках ввода, индексации или поиска.
 
-<img src="C:\Users\lobas\Downloads\2023-03-22_18-28-44.png"/>
+<img src="https://github.com/lobashev-andrey/searchengine-master/blob/master/15.png"/>
 
 Для поиска по проиндексированным страницам нужно перейти на вкладку SEARCH
 Искать можно как сразу по всем сайтам:
 
-<img src="C:\Users\lobas\Downloads\2023-03-22_10-45-02.png" width="1066"/>
+<img src="https://github.com/lobashev-andrey/searchengine-master/blob/master/16.png"/>
 
 так и по выбранному в выпадающем списке:
 
-<img src="C:\Users\lobas\Downloads\2023-03-22_10-35-56.png" width="1046"/>
+<img src="https://github.com/lobashev-andrey/searchengine-master/blob/master/17.png"/>
 
